@@ -16,18 +16,29 @@ args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
-import numpy as np
 import torch
 import os
 
 from isaaclab.envs import ManagerBasedRLEnv
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.assets import ArticulationCfg
 from isaaclab.assets import AssetBaseCfg
-from isaaclab.assets.articulation import ArticulationCfg
-from isaaclab.scene import InteractiveScene, InteractiveSceneCfg
-from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
+from isaaclab.envs import ManagerBasedRLEnvCfg
+from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.terrains import TerrainImporterCfg
+from isaaclab.managers import EventTermCfg as EventTerm
+from isaaclab.managers import ObservationGroupCfg as ObsGroup
+from isaaclab.managers import ObservationTermCfg as ObsTerm
+from isaaclab.managers import RewardTermCfg as RewTerm
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import TerminationTermCfg as DoneTerm
+from isaaclab.utils import configclass
+from isaaclab.sensors import TiledCameraCfg, CameraCfg
 
+import mdp
+
+# robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/src/robot_description/urdf/mobility/main.usdc",
@@ -72,97 +83,183 @@ MOBILITY_CONFIG = ArticulationCfg(
 )
 
 
-class NewRobotsSceneCfg(InteractiveSceneCfg):
+class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
 
     # Ground-plane
-    ground = AssetBaseCfg(prim_path="/World/defaultGroundPlane", spawn=sim_utils.GroundPlaneCfg())
+    ground = AssetBaseCfg(
+        prim_path="/World/ground",
+        spawn=sim_utils.GroundPlaneCfg(size=(100.0, 100.0)),
+    )
 
     # lights
     dome_light = AssetBaseCfg(
-        prim_path="/World/Light", spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75))
+        prim_path="/World/Light",
+        spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75)),
     )
 
-    # robot
-    Dofbot = MOBILITY_CONFIG.replace(prim_path="{ENV_REGEX_NS}/Dofbot")
+    # AI-Mobility-Park world config
+    aimobility_park_world = TerrainImporterCfg(
+        prim_path="/World/Terrain",
+        terrain_type="usd",
+        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/world/aimobilitypark_world.usdc",
+        collision_group=1,
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            friction_combine_mode="multiply",
+            restitution_combine_mode="multiply",
+            static_friction=0,
+            dynamic_friction=1.0
+        ),
+        debug_vis=False
+    )
+
+    # robot 
+    ## prim_path ???
+    robot: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="{ENV_REGEX_NS}/Mobility")
+
+    zed_camera = TiledCameraCfg(
+        prim_path="{ENV_REGEX_NS}/mobility/base_link/camera",
+        offset=TiledCameraCfg.OffsetCfg(
+            pos=(0.35, 0.0, 0.55),
+            rot=(0, 0, 0, 0),
+            convention="opengl",
+        ),
+        data_type=["rgb", "depth", "segmentation"],
+        semantic_tags=["camera"]
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=156.08,
+            focus_distance=400,
+            horizontal_aperture=20.0,
+            clipping_range=(0.02, 300)
+        ),
+        width=480,
+        height=300,
+    )
+
+@configclass
+class ActionsCfg:
+    joint_velocities = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
+
+@configclass
+class ObservationsCfg:
+    """Observation specifications for the MDP."""
+
+    @configclass
+    class PolicyCfg(ObsGroup):
+        """Observations for policy group."""
+
+        # observation terms (order preserved)
+        image = ObsTerm(func=mdp.image, params={"sensor_cfg": SceneEntityCfg("tiled_camera"), "data_type": "rgb"})
+
+        def __post_init__(self) -> None:
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    # observation groups
+    policy: ObsGroup = PolicyCfg()
+
+@configclass
+class EventCfg:
+    """Configuration for events."""
+
+    reset_scene = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
 
 
-def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
-    sim_dt = sim.get_physics_dt()
-    sim_time = 0.0
-    count = 0
+@configclass
+class RewardsCfg:
+    """Reward terms for the MDP."""
 
-    while simulation_app.is_running():
-        # reset
-        if count % 500 == 0:
-            # reset counters
-            count = 0
-            # reset the scene entities to their initial positions offset by the environment origins
-            root_jetbot_state = scene["Jetbot"].data.default_root_state.clone()
-            root_jetbot_state[:, :3] += scene.env_origins
-            root_dofbot_state = scene["Dofbot"].data.default_root_state.clone()
-            root_dofbot_state[:, :3] += scene.env_origins
+    # (1) Failure penalty
+    terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
+    # (2) Primary task: keep robot running on the line
+    normilized_dist = RewTerm(
+        func=mdp.normilized_dist_func,
+        weight=1.0,
+        params={"asset_cfg": SceneEntityCfg("tiled_camera")},
+        )
 
-            # copy the default root state to the sim for the jetbot's orientation and velocity
-            scene["Jetbot"].write_root_pose_to_sim(root_jetbot_state[:, :7])
-            scene["Jetbot"].write_root_velocity_to_sim(root_jetbot_state[:, 7:])
-            scene["Dofbot"].write_root_pose_to_sim(root_dofbot_state[:, :7])
-            scene["Dofbot"].write_root_velocity_to_sim(root_dofbot_state[:, 7:])
 
-            # copy the default joint states to the sim
-            joint_pos, joint_vel = (
-                scene["Jetbot"].data.default_joint_pos.clone(),
-                scene["Jetbot"].data.default_joint_vel.clone(),
-            )
-            scene["Jetbot"].write_joint_state_to_sim(joint_pos, joint_vel)
-            joint_pos, joint_vel = (
-                scene["Dofbot"].data.default_joint_pos.clone(),
-                scene["Dofbot"].data.default_joint_vel.clone(),
-            )
-            scene["Dofbot"].write_joint_state_to_sim(joint_pos, joint_vel)
-            # clear internal buffers
-            scene.reset()
-            print("[INFO]: Resetting Jetbot and Dofbot state...")
+@configclass
+class TerminationsCfg:
+    """Termination terms for the MDP."""
 
-        # drive around
-        if count % 100 < 75:
-            # Drive straight by setting equal wheel velocities
-            action = torch.Tensor([[10.0, 10.0]])
-        else:
-            # Turn by applying different velocities
-            action = torch.Tensor([[5.0, -5.0]])
+    # (1) the robot loses the black line from its sight   
+    robot_out_of_bounds = DoneTerm(
+        func=mdp.out_of_bounds,
+        params={"asset_cfg": SceneEntityCfg("tiled_camera"), "minimum_ratio": 0.05},
+    )   
 
-        scene["Jetbot"].set_joint_velocity_target(action)
 
-        # wave
-        wave_action = scene["Dofbot"].data.default_joint_pos
-        wave_action[:, 0:4] = 0.25 * np.sin(2 * np.pi * 0.5 * sim_time)
-        scene["Dofbot"].set_joint_position_target(wave_action)
+@configclass
+class CommandsCfg:
+    """Command terms for the MDP."""
 
-        scene.write_data_to_sim()
-        sim.step()
-        sim_time += sim_dt
-        count += 1
-        scene.update(sim_dt)
+    # no commands for this MDP
+    null = mdp.NullCommandCfg()
 
+
+@configclass
+class CurriculumCfg:
+    """Configuration for the curriculum."""
+
+    pass
+
+@configclass
+class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
+    """Configuration for the wheeled quadruped environment."""
+
+    # Scene settings
+    scene: CameraBasedRLSceneCfg = CameraBasedRLSceneCfg(num_envs=4096, env_spacing=1.5)
+    # Basic settings
+    observations: ObservationsCfg = ObservationsCfg()
+    actions: ActionsCfg = ActionsCfg()
+    events: EventCfg = EventCfg()
+    # MDP settings
+    curriculum: CurriculumCfg = CurriculumCfg()
+    rewards: RewardsCfg = RewardsCfg()
+    terminations: TerminationsCfg = TerminationsCfg()
+    # No command generator
+    commands: CommandsCfg = CommandsCfg()
+
+    # Post initialization
+    def __post_init__(self) -> None:
+        """Post initialization."""
+        # general settings
+        self.decimation = 2
+        # simulation settings
+        self.sim.dt = 0.005  # simulation timestep -> 200 Hz physics
+        self.episode_length_s = 5
+        # viewer settings
+        self.viewer.eye = (8.0, 0.0, 5.0)
+        # simulation settings
+        self.sim.render_interval = self.decimation
 
 def main():
     """Main function."""
-    # Initialize the simulation context
-    sim_cfg = sim_utils.SimulationCfg(device=args_cli.device)
-    sim = sim_utils.SimulationContext(sim_cfg)
+    # create environment configuration
+    env_cfg = CameraBasedRLCfg()
+    env_cfg.scene.num_envs = args_cli.num_envs
+    # setup RL environment
+    env = ManagerBasedRLEnv(cfg=env_cfg)
+    # simulate physics
+    count = 0
+    while simulation_app.is_running():
+        with torch.inference_mode():
+            # reset
+            if count % 300 == 0:
+                count = 0
+                env.reset()
+                print("-" * 80)
+                print("[INFO]: Resetting environment...")
+            # sample random actions
+            joint_vel = torch.randn_like(env.action_manager.action)
+            # step the environment
+            obs, rew, terminated, truncated, info = env.step(joint_vel)
+            # update counter
+            count += 1
 
-    sim.set_camera_view([3.5, 0.0, 3.2], [0.0, 0.0, 0.5])
-    # design scene
-    scene_cfg = NewRobotsSceneCfg(args_cli.num_envs, env_spacing=2.0)
-    scene = InteractiveScene(scene_cfg)
-    # Play the simulator
-    sim.reset()
-    # Now we are ready!
-    print("[INFO]: Setup complete...")
-    # Run the simulator
-    run_simulator(sim, scene)
-
+    # close the environment
+    env.close()
 
 if __name__ == "__main__":
     main()
