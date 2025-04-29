@@ -1,6 +1,6 @@
 # config/sb3_config.yaml
 
-task_name: "aiformula_camera_based_rl"  # ← 必要なら好きなタスク名にする
+task_name: "formula_camera_based_rl"  # ← 必要なら好きなタスク名にする
 use_vecnormalize: true
 normalize_obs: true
 normalize_reward: true
