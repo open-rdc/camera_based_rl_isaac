@@ -1,0 +1,39 @@
+# config/sb3_config.yaml
+
+task_name: "aiformula_camera_based_rl"  # ← 必要なら好きなタスク名にする
+use_vecnormalize: true
+normalize_obs: true
+normalize_reward: true
+clip_obs: 10.0
+gamma: 0.99
+
+features_dim: 128  # カメラのCNN出力特徴次元
+
+ppo_params:
+  learning_rate: 0.0003
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+total_timesteps: 1000000  # leaning step count
+checkpoint_save_freq: 10000  # save freq
+
+reward_weights:
+  speed: 1.0
+  heading: 1.0
+  off_track: -1.0
+  collision: -1.0
+
+learning_rate: 0.0003
+gamma: 0.99
+n_steps: 2048
+batch_size: 64
+n_epochs: 10
+clip_range: 0.2
+ent_coef: 0.0
