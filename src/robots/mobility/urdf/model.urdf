@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot name="ai_car1">
+<robot name="robots/mobility">
 
 
   <link name="base_link"/>
@@ -14,13 +14,13 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 3.14"/>
       <geometry>
-        <mesh filename="package://simulator/models/ai_car1/meshes/AIF_body.dae"/>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/AIF_body.dae"/>
       </geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 3.14"/>
       <geometry>
-        <mesh filename="package://simulator/models/ai_car1/meshes/AIF_body.dae"/>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/AIF_body.dae"/>
       </geometry>
     </collision>
   </link>
@@ -35,13 +35,13 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-        <mesh filename="package://simulator/models/ai_car1/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
       </geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-        <mesh filename="package://simulator/models/ai_car1/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
       </geometry>
     </collision>
   </link>
@@ -56,13 +56,13 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-      <mesh filename="package://simulator/models/ai_car1/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
       </geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-      <mesh filename="package://simulator/models/ai_car1/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
       </geometry>
     </collision>
   </link>
@@ -77,13 +77,13 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://simulator/models/ai_car1/meshes/tire.dae" scale="0.1 0.1 0.1"/>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.1 0.1"/>
       </geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://simulator/models/ai_car1/meshes/tire.dae" scale="0.1 0.1 0.1"/>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.1 0.1"/>
       </geometry>
     </collision>
   </link>
