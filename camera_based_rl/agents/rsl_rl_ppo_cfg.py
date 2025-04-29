@@ -13,7 +13,7 @@ class FormulaPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 16
     max_iterations = 150
     save_interval = 50
-    experiment_name = "cartpole"
+    experiment_name = "formula"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

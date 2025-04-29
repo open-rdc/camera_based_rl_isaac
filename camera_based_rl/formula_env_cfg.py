@@ -41,13 +41,13 @@ import mdp
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/mobility/usd/mobility.usdc",
+        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/robots/mobility/usd/mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
             max_linear_velocity=7.0,
             max_angular_velocity=4.0,
             max_depenetration_velocity=5.0,
-            enable_gyroscopic=True,
+            enable_gyroscopic_forces=True,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
             enabled_self_collisions=False,
@@ -101,7 +101,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     aimobility_park_world = TerrainImporterCfg(
         prim_path="/World/Terrain",
         terrain_type="usd",
-        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/world/mobility_park.usd",
+        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/worlds/usd/mobility_park.usd",
         collision_group=1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -114,17 +114,16 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
     # robot 
     ## prim_path ???
-    robot: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="{ENV_REGEX_NS}/Mobility")
+    robot: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="/World/envs/env_0/mobility")
 
     zed_camera = TiledCameraCfg(
-        prim_path="{ENV_REGEX_NS}/mobility/base_link/camera",
+        prim_path="/World/envs/env_0/base_link/camera",
         offset=TiledCameraCfg.OffsetCfg(
             pos=(0.35, 0.0, 0.55),
             rot=(0, 0, 0, 0),
             convention="opengl",
         ),
-        data_type=["rgb", "depth", "segmentation"],
-        semantic_tags=["camera"],
+        data_types=["rgb", "depth", "segmentation"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=156.08,
             focus_distance=400,
@@ -134,14 +133,10 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
         width=480,
         height=300,
     )
-##
-# MDP settings
-##
 
 @configclass
 class ActionsCfg:
     joint_velocities = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
-
 
 @configclass
 class ObservationsCfg:
@@ -161,25 +156,12 @@ class ObservationsCfg:
     # observation groups
     policy: ObsGroup = PolicyCfg()
 
-
 @configclass
 class EventCfg:
-    """Configuration for events (robot reset settings)."""
+    """Configuration for events."""
 
-    reset_robot_pose = EventTerm(
-        func=mdp.reset_root_and_joints,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot"),
-            "root_position": (0.6, 0.0, 0.0),
-            "root_orientation": (0.0, 0.0, -0.682, 0.731),  # quaternion (x, y, z, w)
-            "joint_positions": {
-                "left_wheel_joint": 0.0,
-                "right_wheel_joint": 0.0,
-                "caster_joint": 0.0,
-            },
-        },
-    )
+    reset_scene = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
+
 
 @configclass
 class RewardsCfg:
@@ -187,25 +169,24 @@ class RewardsCfg:
 
     # (1) Failure penalty
     terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
-    # (2) Primary task: keep robot running on the course
-    runnning_reward = RewTerm(
+    # (2) Primary task: keep robot running on the line
+    normilized_dist = RewTerm(
         func=mdp.compute_reward,
         weight=1.0,
-        params={"asset_cfg": SceneEntityCfg("tiled_camera")},
-    )
+        params={"asset_cfg": SceneEntityCfg("zed_camera")},
+        )
 
 
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    # (1) Time out
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    # (2) Cart out of bounds
-    cart_out_of_bounds = DoneTerm(
+    # (1) the robot loses the black line from its sight   
+    robot_out_of_bounds = DoneTerm(
         func=mdp.termination,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["slider_to_cart"]), "bounds": (-3.0, 3.0)},
-    )
+        params={"asset_cfg": SceneEntityCfg("zed_camera"), "minimum_ratio": 0.05},
+    )   
+
 
 @configclass
 class CommandsCfg:
@@ -220,10 +201,6 @@ class CurriculumCfg:
     """Configuration for the curriculum."""
 
     pass
-
-##
-# Environment configuration
-##
 
 @configclass
 class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
