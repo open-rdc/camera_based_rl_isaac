@@ -41,7 +41,7 @@ import mdp
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/src/robot_description/urdf/mobility/main.usdc",
+        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/mobility/usd/mobility.usdc",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
             max_linear_velocity=7.0.
@@ -102,7 +102,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     aimobility_park_world = TerrainImporterCfg(
         prim_path="/World/Terrain",
         terrain_type="usd",
-        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/world/aimobilitypark_world.usdc",
+        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/world/mobility_park.usd",
         collision_group=1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -149,7 +149,7 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        image = ObsTerm(func=mdp.image, params={"sensor_cfg": SceneEntityCfg("tiled_camera"), "data_type": "rgb"})
+        image = ObsTerm(func=mdp.image, params={"sensor_cfg": SceneEntityCfg("zed_camera"), "data_type": "rgb"})
 
         def __post_init__(self) -> None:
             self.enable_corruption = False
@@ -175,7 +175,7 @@ class RewardsCfg:
     normilized_dist = RewTerm(
         func=mdp.normilized_dist_func,
         weight=1.0,
-        params={"asset_cfg": SceneEntityCfg("tiled_camera")},
+        params={"asset_cfg": SceneEntityCfg("zed_camera")},
         )
 
 
@@ -186,7 +186,7 @@ class TerminationsCfg:
     # (1) the robot loses the black line from its sight   
     robot_out_of_bounds = DoneTerm(
         func=mdp.out_of_bounds,
-        params={"asset_cfg": SceneEntityCfg("tiled_camera"), "minimum_ratio": 0.05},
+        params={"asset_cfg": SceneEntityCfg("zed_camera"), "minimum_ratio": 0.05},
     )   
 
 

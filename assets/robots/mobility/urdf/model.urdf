@@ -1,0 +1,122 @@
+<?xml version="1.0"?>
+<robot name="robots/mobility">
+
+
+  <link name="base_link"/>
+
+  <!-- ========== Chassis ========== -->
+  <link name="chassis">
+    <inertial>
+      <mass value="30.0"/>
+      <inertia ixx="1.73333" ixy="0" ixz="0"
+               iyy="4.56667" iyz="0" izz="4.56667"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 3.14"/>
+      <geometry>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/AIF_body.dae"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 3.14"/>
+      <geometry>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/AIF_body.dae"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ========== Left Wheel ========== -->
+  <link name="left_wheel">
+    <inertial>
+      <mass value="7.0"/>
+      <inertia ixx="0.04778" ixy="0" ixz="0"
+               iyy="0.04778" iyz="0" izz="0.07875"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 1.57"/>
+      <geometry>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 1.57"/>
+      <geometry>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ========== Right Wheel ========== -->
+  <link name="right_wheel">
+    <inertial>
+      <mass value="7.0"/>
+      <inertia ixx="0.04778" ixy="0" ixz="0"
+               iyy="0.04778" iyz="0" izz="0.07875"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 1.57"/>
+      <geometry>
+      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 1.57"/>
+      <geometry>
+      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ========== Caster Wheel ========== -->
+  <link name="caster">
+    <inertial>
+      <mass value="10.0"/>
+      <inertia ixx="0.04778" ixy="0" ixz="0"
+               iyy="0.04778" iyz="0" izz="0.07875"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.1 0.1"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.1 0.1"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ========== Joints ========== -->
+  <joint name="base_to_chassis" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis"/>
+    <origin xyz="0 0 0.12" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="left_wheel_joint" type="revolute">
+    <parent link="chassis"/>
+    <child link="left_wheel"/>
+    <origin xyz="0 -0.3 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-3.14" upper="3.14" effort="5" velocity="10"/>
+  </joint>
+
+  <joint name="right_wheel_joint" type="revolute">
+    <parent link="chassis"/>
+    <child link="right_wheel"/>
+    <origin xyz="0 0.3 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-3.14" upper="3.14" effort="5" velocity="10"/>
+  </joint>
+
+  <joint name="caster_joint" type="revolute">
+    <parent link="chassis"/>
+    <child link="caster"/>
+    <origin xyz="-0.8 0 0" rpy="0 0 1.57"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.523599" upper="0.523599" effort="5" velocity="5"/>
+  </joint>
+
+</robot>
