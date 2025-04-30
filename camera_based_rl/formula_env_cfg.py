@@ -61,7 +61,7 @@ MOBILITY_CONFIG = ArticulationCfg(
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.6, 0.0, 0.0),
         # orientation
-        rot=(0, 0, 0, 1),
+        rot=(-0.7071, 0, 0, 0.7071),
         joint_pos={"left_wheel_joint": 0.0, "right_wheel_joint": 0.0, "caster_joint": 0.0},
     ),
     actuators={
@@ -117,7 +117,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
         spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75)),
     )
     
-    zed_camera = TiledCameraCfg(
+    tiled_camera = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Mobility/base_link/Camera",
         offset=TiledCameraCfg.OffsetCfg(
             pos=(0.35, 0.0, 0.55),
@@ -135,33 +135,51 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
         height=300,
     )
 
+##
+# MDP settings
+##
+
 @configclass
 class ActionsCfg:
-    joint_velocities = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
+    joint_velocities = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
 
 @configclass
 class ObservationsCfg:
-    """Observation specifications for the MDP."""
 
     @configclass
     class PolicyCfg(ObsGroup):
-        """Observations for policy group."""
-
-        # observation terms (order preserved)
-        image = ObsTerm(func=mdp.image, params={"sensor_cfg": SceneEntityCfg("zed_camera"), "data_type": "rgb"})
+        joint_pos_rel = ObsTerm(func=mdp.joint_pos_rel, params={"asset_cfg": SceneEntityCfg("mobility")})
+        joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel, params={"asset_cfg": SceneEntityCfg("mobility")})
 
         def __post_init__(self) -> None:
-            self.enable_corruption = False
             self.concatenate_terms = True
 
-    # observation groups
-    policy: ObsGroup = PolicyCfg()
+    @configclass
+    class ImageGroupCfg(ObsGroup):
+        image = ObsTerm(func=mdp.image, params={"sensor_cfg": SceneEntityCfg("tiled_camera"), "data_type": "rgb"})
+
+        def __post_init__(self) -> None:
+            self.concatenate_terms = False
+
+    # 観測グループ
+    policy: PolicyCfg = PolicyCfg()
+    image_group: ImageGroupCfg = ImageGroupCfg()
 
 @configclass
 class EventCfg:
     """Configuration for events."""
 
     reset_scene = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
+
+    reset_mobility_position = EventTerm(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("mobility", joint_names=["left_wheel_joint", "right_wheel_joint"]),
+            "position_range": (-1.0, 1.0),
+            "velocity_range": (-0.5, 0.5),
+        },
+    )
 
 
 @configclass
@@ -174,7 +192,7 @@ class RewardsCfg:
     running_reward = RewTerm(
         func=mdp.compute_reward,
         weight=1.0,
-        params={"asset_cfg": SceneEntityCfg("zed_camera")},
+        params={"asset_cfg": SceneEntityCfg("tiled_camera")},
         )
 
 
@@ -185,9 +203,8 @@ class TerminationsCfg:
 
     # robot_out_of_course = DoneTerm(
     #     func=mdp.termination,
-    #     params={"asset_cfg": SceneEntityCfg("zed_camera"), "minimum_ratio": 0.05},
+    #     params={"bounds": (-10.0, 10.0), "asset_cfg": SceneEntityCfg("tiled_camera")},
     # )
-
 
 @configclass
 class CommandsCfg:
@@ -208,7 +225,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
     """Configuration for the wheeled quadruped environment."""
 
     # Scene settings
-    scene: CameraBasedRLSceneCfg = CameraBasedRLSceneCfg(num_envs=4096, env_spacing=1.5)
+    scene: CameraBasedRLSceneCfg = CameraBasedRLSceneCfg(num_envs=1, env_spacing=1.5)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()

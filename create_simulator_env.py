@@ -48,9 +48,10 @@ MOBILITY_CONFIG = ArticulationCfg(
             max_angular_velocity=4.0,
             max_depenetration_velocity=5.0,
             enable_gyroscopic_forces=True,
+            disable_gravity=False,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=False,
+            enabled_self_collisions=True,
             solver_position_iteration_count=4,
             solver_velocity_iteration_count=0,
             sleep_threshold=0.005,
@@ -59,8 +60,8 @@ MOBILITY_CONFIG = ArticulationCfg(
     ),
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.6, 0.0, 0.0),
-        # orientation
-        rot=(0, 0, 0, 1),
+        # orientation<-(0, 0, -1.57)
+        rot=(-0.7071, 0, 0, 0.7071),
         joint_pos={"left_wheel_joint": 0.0, "right_wheel_joint": 0.0, "caster_joint": 0.0},
     ),
     actuators={
@@ -94,21 +95,20 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
             restitution_combine_mode="multiply",
-            static_friction=0,
+            static_friction=0.0,
             dynamic_friction=1.0
         ),
         debug_vis=False
     )
 
     # robot 
-    ## prim_path ???
-    mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="{ENV_REGEX_NS}/Mobility")
+    mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="/World/envs/env_0/Mobility")
 
-    # Ground-plane
-    ground = AssetBaseCfg(
-        prim_path="/World/ground",
-        spawn=sim_utils.GroundPlaneCfg(size=(100.0, 100.0)),
-    )
+    # # Ground-plane
+    # ground = AssetBaseCfg(
+    #     prim_path="/World/ground",
+    #     spawn=sim_utils.GroundPlaneCfg(size=(500.0, 500.0)),
+    # )
 
     # lights
     dome_light = AssetBaseCfg(
@@ -117,10 +117,10 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     )
     
     tiled_camera = TiledCameraCfg(
-        prim_path="{ENV_REGEX_NS}/Mobility/base_link/Camera",
+        prim_path="/World/envs/env_0/Mobility/chassis/Camera",
         offset=TiledCameraCfg.OffsetCfg(
             pos=(0.35, 0.0, 0.55),
-            rot=(0, 0, 0, 0),
+            rot=(0.5, 0.5, -0.5, -0.5),
             convention="opengl",
         ),
         data_types=["rgb", "depth", "semantic_segmentation"],
@@ -134,33 +134,51 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
         height=300,
     )
 
+##
+# MDP settings
+##
+
 @configclass
 class ActionsCfg:
-    joint_velocities = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
+    joint_velocities = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
 
 @configclass
 class ObservationsCfg:
-    """Observation specifications for the MDP."""
 
     @configclass
     class PolicyCfg(ObsGroup):
-        """Observations for policy group."""
+        joint_pos_rel = ObsTerm(func=mdp.joint_pos_rel, params={"asset_cfg": SceneEntityCfg("mobility")})
+        joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel, params={"asset_cfg": SceneEntityCfg("mobility")})
 
-        # observation terms (order preserved)
+        def __post_init__(self) -> None:
+            self.concatenate_terms = True
+
+    @configclass
+    class ImageGroupCfg(ObsGroup):
         image = ObsTerm(func=mdp.image, params={"sensor_cfg": SceneEntityCfg("tiled_camera"), "data_type": "rgb"})
 
         def __post_init__(self) -> None:
-            self.enable_corruption = False
-            self.concatenate_terms = True
+            self.concatenate_terms = False
 
-    # observation groups
-    policy: ObsGroup = PolicyCfg()
+    # 観測グループ
+    policy: PolicyCfg = PolicyCfg()
+    image_group: ImageGroupCfg = ImageGroupCfg()
 
 @configclass
 class EventCfg:
     """Configuration for events."""
 
     reset_scene = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
+
+    reset_mobility_position = EventTerm(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("mobility", joint_names=["left_wheel_joint", "right_wheel_joint"]),
+            "position_range": (-1.0, 1.0),
+            "velocity_range": (-0.5, 0.5),
+        },
+    )
 
 
 @configclass
@@ -184,9 +202,8 @@ class TerminationsCfg:
 
     # robot_out_of_course = DoneTerm(
     #     func=mdp.termination,
-    #     params={"asset_cfg": SceneEntityCfg("tiled_camera"), "minimum_ratio": 0.05},
+    #     params={"bounds": (-10.0, 10.0), "asset_cfg": SceneEntityCfg("tiled_camera")},
     # )
-
 
 @configclass
 class CommandsCfg:
@@ -207,7 +224,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
     """Configuration for the wheeled quadruped environment."""
 
     # Scene settings
-    scene: CameraBasedRLSceneCfg = CameraBasedRLSceneCfg(num_envs=4096, env_spacing=1.5)
+    scene: CameraBasedRLSceneCfg = CameraBasedRLSceneCfg(num_envs=1, env_spacing=1.5)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -233,32 +250,33 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
         self.sim.render_interval = self.decimation
 
 def main():
-    """Main function."""
+    """Main function: Launch viewer with only robot and world shown."""
     # create environment configuration
     env_cfg = CameraBasedRLCfg()
     env_cfg.scene.num_envs = args_cli.num_envs
-    # setup RL environment
+    env_cfg.sim.device = args_cli.device
+
+    # create and reset the scene (without stepping physics)
     env = ManagerBasedRLEnv(cfg=env_cfg)
-    # simulate physics
-    
+
     count = 0
     while simulation_app.is_running():
         with torch.inference_mode():
-            # reset
-            if count % 300 == 0:
-                count = 0
+            if count % 100 == 0:
+                count=0
                 env.reset()
                 print("-" * 80)
-                print("[INFO]: Resetting environment...")
-            # sample random actions
+                print("[INFO]: Environment initialized. Displaying scene...")
+
             joint_vel = torch.randn_like(env.action_manager.action)
             # step the environment
             obs, rew, terminated, truncated, info = env.step(joint_vel)
-            # update counter
+            # simulation_app.update()  # just keeps viewer open and responsive
+            print("[Env 0]: Pole joint: ", obs["policy"][0][1].item())
             count += 1
-
-    # close the environment
+    # close the environment and simulation
     env.close()
+
 
 if __name__ == "__main__":
     main()
