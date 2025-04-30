@@ -6,7 +6,7 @@ from isaaclab.app import AppLauncher
 parser = argparse.ArgumentParser(
     description="Traning for wheeled quadruped robot."
 )
-parser.add_argument("--num_envs", type=int, default=9, help="Number of environments to spawn.")
+parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to spawn.")
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
@@ -18,6 +18,7 @@ simulation_app = app_launcher.app
 
 import torch
 import os
+import sys
 
 from isaaclab.envs import ManagerBasedRLEnv
 import isaaclab.sim as sim_utils
@@ -35,13 +36,13 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils import configclass
 from isaaclab.sensors import TiledCameraCfg, CameraCfg
-
+sys.path.append(os.environ['HOME'] + "/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/camera_based_rl/")
 import mdp
 
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/robots/mobility/usd/mobility.usd",
+        usd_path=os.environ['HOME'] + "/IsaacLab/source/extensions/isaaclab_tasks/omni/isaac/lab_tasks/manager_based/classic/camera_based_rl/mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
             max_linear_velocity=7.0,
@@ -60,7 +61,7 @@ MOBILITY_CONFIG = ArticulationCfg(
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.6, 0.0, 0.0),
         # orientation
-        rot=(0, 0, -0.682, 0.731),
+        rot=(0, 0, 0, 1),
         joint_pos={"left_wheel_joint": 0.0, "right_wheel_joint": 0.0, "caster_joint": 0.0},
     ),
     actuators={
@@ -85,23 +86,11 @@ MOBILITY_CONFIG = ArticulationCfg(
 class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
 
-    # Ground-plane
-    ground = AssetBaseCfg(
-        prim_path="/World/ground",
-        spawn=sim_utils.GroundPlaneCfg(size=(100.0, 100.0)),
-    )
-
-    # lights
-    dome_light = AssetBaseCfg(
-        prim_path="/World/Light",
-        spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75)),
-    )
-
-    # AI-Mobility-Park world config
-    aimobility_park_world = TerrainImporterCfg(
+    # AI-Mobility-Park config
+    mobility_park = TerrainImporterCfg(
         prim_path="/World/Terrain",
         terrain_type="usd",
-        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/worlds/usd/mobility_park.usd",
+        usd_path=os.environ['HOME'] + "/IsaacLab/source/extensions/isaaclab_tasks/omni/isaac/lab_tasks/manager_based/classic/camera_based_rl/worlds/world/mobility_park.usd",
         collision_group=1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -114,16 +103,28 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
     # robot 
     ## prim_path ???
-    robot: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="/World/envs/env_0/mobility")
+    mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="{ENV_REGEX_NS}/Mobility")
 
+    # Ground-plane
+    ground = AssetBaseCfg(
+        prim_path="/World/ground",
+        spawn=sim_utils.GroundPlaneCfg(size=(100.0, 100.0)),
+    )
+
+    # lights
+    dome_light = AssetBaseCfg(
+        prim_path="/World/Light",
+        spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75)),
+    )
+    
     zed_camera = TiledCameraCfg(
-        prim_path="/World/envs/env_0/base_link/camera",
+        prim_path="{ENV_REGEX_NS}/Mobility/base_link/Camera",
         offset=TiledCameraCfg.OffsetCfg(
             pos=(0.35, 0.0, 0.55),
             rot=(0, 0, 0, 0),
             convention="opengl",
         ),
-        data_types=["rgb", "depth", "segmentation"],
+        data_types=["rgb", "depth", "semantic_segmentation"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=156.08,
             focus_distance=400,
@@ -170,7 +171,7 @@ class RewardsCfg:
     # (1) Failure penalty
     terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
     # (2) Primary task: keep robot running on the line
-    normilized_dist = RewTerm(
+    running_reward = RewTerm(
         func=mdp.compute_reward,
         weight=1.0,
         params={"asset_cfg": SceneEntityCfg("zed_camera")},
@@ -180,12 +181,12 @@ class RewardsCfg:
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
-    # (1) the robot loses the black line from its sight   
-    robot_out_of_bounds = DoneTerm(
-        func=mdp.termination,
-        params={"asset_cfg": SceneEntityCfg("zed_camera"), "minimum_ratio": 0.05},
-    )   
+    # robot_out_of_course = DoneTerm(
+    #     func=mdp.termination,
+    #     params={"asset_cfg": SceneEntityCfg("zed_camera"), "minimum_ratio": 0.05},
+    # )
 
 
 @configclass
