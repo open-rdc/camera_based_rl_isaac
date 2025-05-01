@@ -51,7 +51,7 @@ MOBILITY_CONFIG = ArticulationCfg(
             disable_gravity=False,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=True,
+            enabled_self_collisions=False,
             solver_position_iteration_count=4,
             solver_velocity_iteration_count=0,
             sleep_threshold=0.005,
@@ -59,10 +59,10 @@ MOBILITY_CONFIG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.6, 0.0, 0.0),
+        pos=(0.6, 0.0, 8.0),
         # orientation<-(0, 0, -1.57)
         rot=(-0.7071, 0, 0, 0.7071),
-        joint_pos={"left_wheel_joint": 0.0, "right_wheel_joint": 0.0, "caster_joint": 0.0},
+        joint_pos={"left_wheel_joint": 0.0, "right_wheel_joint": 0.0, "caster_wheel_joint": 0.0},
     ),
     actuators={
         "left_wheel_actuator": ImplicitActuatorCfg(
@@ -82,6 +82,7 @@ MOBILITY_CONFIG = ArticulationCfg(
     },
 )
 
+
 class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
 
@@ -97,7 +98,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
             static_friction=0.0,
             dynamic_friction=1.0
         ),
-        debug_vis=False
+        debug_vis=True
     )
 
     # robot 
@@ -133,7 +134,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocities = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
 
 @configclass
 class ObservationsCfg:
