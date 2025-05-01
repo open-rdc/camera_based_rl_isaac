@@ -82,7 +82,6 @@ MOBILITY_CONFIG = ArticulationCfg(
     },
 )
 
-
 class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
 
@@ -103,12 +102,6 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
     # robot 
     mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="/World/envs/env_0/Mobility")
-
-    # # Ground-plane
-    # ground = AssetBaseCfg(
-    #     prim_path="/World/ground",
-    #     spawn=sim_utils.GroundPlaneCfg(size=(500.0, 500.0)),
-    # )
 
     # lights
     dome_light = AssetBaseCfg(
@@ -144,25 +137,14 @@ class ActionsCfg:
 
 @configclass
 class ObservationsCfg:
-
     @configclass
     class PolicyCfg(ObsGroup):
-        joint_pos_rel = ObsTerm(func=mdp.joint_pos_rel, params={"asset_cfg": SceneEntityCfg("mobility")})
-        joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel, params={"asset_cfg": SceneEntityCfg("mobility")})
-
-        def __post_init__(self) -> None:
-            self.concatenate_terms = True
-
-    @configclass
-    class ImageGroupCfg(ObsGroup):
         image = ObsTerm(func=mdp.image, params={"sensor_cfg": SceneEntityCfg("tiled_camera"), "data_type": "rgb"})
 
         def __post_init__(self) -> None:
             self.concatenate_terms = False
 
-    # 観測グループ
     policy: PolicyCfg = PolicyCfg()
-    image_group: ImageGroupCfg = ImageGroupCfg()
 
 @configclass
 class EventCfg:
@@ -265,14 +247,21 @@ def main():
             if count % 100 == 0:
                 count=0
                 env.reset()
+
                 print("-" * 80)
                 print("[INFO]: Environment initialized. Displaying scene...")
 
             joint_vel = torch.randn_like(env.action_manager.action)
             # step the environment
             obs, rew, terminated, truncated, info = env.step(joint_vel)
-            # simulation_app.update()  # just keeps viewer open and responsive
-            print("[Env 0]: Pole joint: ", obs["policy"][0][1].item())
+
+            simulation_app.update()
+
+            state = env.scene.get_state()
+
+            root_pose = state["articulation"]["mobility"]["root_pose"]
+            print(f"Root pose: {root_pose}")
+
             count += 1
     # close the environment and simulation
     env.close()
