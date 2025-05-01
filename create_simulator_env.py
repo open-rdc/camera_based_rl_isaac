@@ -51,7 +51,7 @@ MOBILITY_CONFIG = ArticulationCfg(
             disable_gravity=False,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=True,
+            enabled_self_collisions=False,
             solver_position_iteration_count=4,
             solver_velocity_iteration_count=0,
             sleep_threshold=0.005,
@@ -59,10 +59,10 @@ MOBILITY_CONFIG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.6, 0.0, 0.0),
+        pos=(0.6, 0.0, 8.0),
         # orientation<-(0, 0, -1.57)
         rot=(-0.7071, 0, 0, 0.7071),
-        joint_pos={"left_wheel_joint": 0.0, "right_wheel_joint": 0.0, "caster_joint": 0.0},
+        joint_pos={"left_wheel_joint": 0.0, "right_wheel_joint": 0.0, "caster_wheel_joint": 0.0},
     ),
     actuators={
         "left_wheel_actuator": ImplicitActuatorCfg(
@@ -98,17 +98,11 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
             static_friction=0.0,
             dynamic_friction=1.0
         ),
-        debug_vis=False
+        debug_vis=True
     )
 
     # robot 
     mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="/World/envs/env_0/Mobility")
-
-    # # Ground-plane
-    # ground = AssetBaseCfg(
-    #     prim_path="/World/ground",
-    #     spawn=sim_utils.GroundPlaneCfg(size=(500.0, 500.0)),
-    # )
 
     # lights
     dome_light = AssetBaseCfg(
@@ -140,29 +134,18 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocities = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
 
 @configclass
 class ObservationsCfg:
-
     @configclass
     class PolicyCfg(ObsGroup):
-        joint_pos_rel = ObsTerm(func=mdp.joint_pos_rel, params={"asset_cfg": SceneEntityCfg("mobility")})
-        joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel, params={"asset_cfg": SceneEntityCfg("mobility")})
-
-        def __post_init__(self) -> None:
-            self.concatenate_terms = True
-
-    @configclass
-    class ImageGroupCfg(ObsGroup):
         image = ObsTerm(func=mdp.image, params={"sensor_cfg": SceneEntityCfg("tiled_camera"), "data_type": "rgb"})
 
         def __post_init__(self) -> None:
             self.concatenate_terms = False
 
-    # 観測グループ
     policy: PolicyCfg = PolicyCfg()
-    image_group: ImageGroupCfg = ImageGroupCfg()
 
 @configclass
 class EventCfg:
@@ -265,14 +248,21 @@ def main():
             if count % 100 == 0:
                 count=0
                 env.reset()
+
                 print("-" * 80)
                 print("[INFO]: Environment initialized. Displaying scene...")
 
             joint_vel = torch.randn_like(env.action_manager.action)
             # step the environment
             obs, rew, terminated, truncated, info = env.step(joint_vel)
-            # simulation_app.update()  # just keeps viewer open and responsive
-            print("[Env 0]: Pole joint: ", obs["policy"][0][1].item())
+
+            simulation_app.update()
+
+            state = env.scene.get_state()
+
+            root_pose = state["articulation"]["mobility"]["root_pose"]
+            print(f"Root pose: {root_pose}")
+
             count += 1
     # close the environment and simulation
     env.close()
