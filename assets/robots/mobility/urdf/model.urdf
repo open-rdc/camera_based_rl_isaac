@@ -25,8 +25,8 @@
     </collision>
   </link>
 
-  <!-- ========== Left Wheel ========== -->
-  <link name="left_wheel">
+  <!-- ========== right Wheel ========== -->
+  <link name="right_wheel">
     <inertial>
       <mass value="7.0"/>
       <inertia ixx="0.04778" ixy="0" ixz="0"
@@ -46,8 +46,8 @@
     </collision>
   </link>
 
-  <!-- ========== Right Wheel ========== -->
-  <link name="right_wheel">
+  <!-- ========== left Wheel ========== -->
+  <link name="left_wheel">
     <inertial>
       <mass value="7.0"/>
       <inertia ixx="0.04778" ixy="0" ixz="0"
@@ -95,28 +95,27 @@
     <origin xyz="0 0 0.12" rpy="0 0 0"/>
   </joint>
 
-  <joint name="left_wheel_joint" type="revolute">
+  <joint name="right_wheel_joint" type="revolute">
     <parent link="chassis"/>
-    <child link="left_wheel"/>
+    <child link="right_wheel"/>
     <origin xyz="0 -0.3 0" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
     <limit lower="-3.14" upper="3.14" effort="5" velocity="10"/>
   </joint>
 
-  <joint name="right_wheel_joint" type="revolute">
+  <joint name="left_wheel_joint" type="revolute">
     <parent link="chassis"/>
-    <child link="right_wheel"/>
+    <child link="left_wheel"/>
     <origin xyz="0 0.3 0" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
     <limit lower="-3.14" upper="3.14" effort="5" velocity="10"/>
   </joint>
 
-  <joint name="caster_joint" type="revolute">
+  <joint name="caster_wheel_joint" type="revolute">
     <parent link="chassis"/>
     <child link="caster"/>
     <origin xyz="-0.8 0 0" rpy="0 0 1.57"/>
-    <axis xyz="0 1 0"/>
-    <limit lower="-0.523599" upper="0.523599" effort="5" velocity="5"/>
+    <axis xyz="1 0 0"/>
   </joint>
 
 </robot>
