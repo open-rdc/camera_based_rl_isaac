@@ -181,12 +181,54 @@ class RewardsCfg:
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
-    # robot_out_of_course = DoneTerm(
-    #     func=mdp.termination,
-    #     params={"bounds": (-10.0, 10.0), "asset_cfg": SceneEntityCfg("tiled_camera")},
-    # )
+    time_out = DoneTerm(
+        func=mdp.time_out,
+        time_out=True,
+        )
+
+    robot_out_of_course = DoneTerm(
+        func=mdp.out_of_course_area,
+        params={
+            "center_line": [
+                (-2.187, 11.075),
+                (-2.068, 11.075),
+                (-2.216, 9.417),
+                (-2.168, 7.992),
+                (0.202, -20.024),
+                (0.865, -23.515),
+                (1.906, -26.231),
+                (4.406, -30.519),
+                (9.936, -36.250),
+                (14.200, -38.478),
+                (72.056, -56.604),
+                (77.550, -58.040),
+                (82.246, -59.230),
+                (86.111, -57.703),
+                (89.453, -56.711),
+                (92.395, -55.221),
+                (94.814, -53.563),
+                (99.075, -49.210),
+                (102.459, -43.237),
+                (104.063, -35.890),
+                (103.915, -33.450),
+                (99.309, 17.631),
+                (97.576, 22.856),
+                (93.949, 28.612),
+                (89.790, 32.436),
+                (84.576, 35.063),
+                (78.687, 36.400),
+                (72.507, 36.135),
+                (18.716, 31.860),
+                (9.171, 28.860),
+                (4.230, 24.858),
+                (-0.376, 17.834),
+                (-1.892, 12.410),
+                (-2.187, 11.075)
+            ], 
+            "course_width": 8.0,
+            "asset_cfg": SceneEntityCfg("mobility")},
+        )
 
 @configclass
 class CommandsCfg:
@@ -226,7 +268,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
         self.decimation = 2
         # simulation settings
         self.sim.dt = 0.005  # simulation timestep -> 200 Hz physics
-        self.episode_length_s = 5
+        self.episode_length_s = 100
         # viewer settings
         self.viewer.eye = (8.0, 0.0, 5.0)
         # simulation settings
@@ -242,15 +284,8 @@ def main():
     # create and reset the scene (without stepping physics)
     env = ManagerBasedRLEnv(cfg=env_cfg)
 
-    count = 0
     while simulation_app.is_running():
         with torch.inference_mode():
-            if count % 100 == 0:
-                count=0
-                env.reset()
-
-                print("-" * 80)
-                print("[INFO]: Environment initialized. Displaying scene...")
 
             joint_vel = torch.randn_like(env.action_manager.action)
             # step the environment
@@ -263,7 +298,6 @@ def main():
             root_pose = state["articulation"]["mobility"]["root_pose"]
             print(f"Root pose: {root_pose}")
 
-            count += 1
     # close the environment and simulation
     env.close()
 
