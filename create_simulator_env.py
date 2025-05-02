@@ -59,7 +59,7 @@ MOBILITY_CONFIG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.6, 0.0, 8.0),
+        pos=(0.6, 0.0, 0.0),
         # orientation<-(0, 0, -1.57)
         rot=(-0.7071, 0, 0, 0.7071),
         joint_pos={"left_wheel_joint": 0.0, "right_wheel_joint": 0.0, "caster_wheel_joint": 0.0},
