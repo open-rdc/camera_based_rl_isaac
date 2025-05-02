@@ -41,7 +41,7 @@ import mdp
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/robots/mobility/usd/mobility.usd",
+        usd_path=os.environ['HOME'] + "/Documents/robot_model/caster_fix_mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
             max_linear_velocity=7.0,
@@ -111,7 +111,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     )
     
     tiled_camera = TiledCameraCfg(
-        prim_path="/World/envs/env_0/Mobility/chassis/Camera",
+        prim_path="/World/envs/env_0/Mobility/base_link/Camera",
         offset=TiledCameraCfg.OffsetCfg(
             pos=(0.35, 0.0, 0.55),
             rot=(0.5, 0.5, -0.5, -0.5),
@@ -119,7 +119,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
         ),
         data_types=["rgb", "depth", "semantic_segmentation"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=156.08,
+            focal_length=22.0,
             focus_distance=400,
             horizontal_aperture=20.0,
             clipping_range=(0.02, 300)
