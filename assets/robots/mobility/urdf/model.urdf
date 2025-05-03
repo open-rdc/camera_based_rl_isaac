@@ -68,6 +68,8 @@
   </link>
 
   <!-- ========== Caster Wheel ========== -->
+  <link name="caster_yaw_link"/>
+  <link name="caster_roll_link"/>
   <link name="caster">
     <inertial>
       <mass value="10.0"/>
@@ -111,11 +113,25 @@
     <limit lower="-3.14" upper="3.14" effort="5" velocity="10"/>
   </joint>
 
-  <joint name="caster_wheel_joint" type="revolute">
+  <joint name="caster_yaw_joint" type="revolute">
     <parent link="chassis"/>
-    <child link="caster"/>
-    <origin xyz="-0.8 0 0" rpy="0 0 1.57"/>
+    <child link="caster_yaw_link"/>
+    <origin xyz="-0.8 0 -0.02" rpy="0 0 1.57"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.5236" upper="0.5236"/>
+  </joint>
+
+  <joint name="caster_roll_joint" type="revolute">
+    <parent link="caster_yaw_link"/>
+    <child link="caster_roll_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
     <axis xyz="1 0 0"/>
+  </joint>
+
+  <joint name="caster_mount_joint" type="fixed">
+    <parent link="caster_roll_link"/>
+    <child link="caster"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
 </robot>
