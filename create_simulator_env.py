@@ -18,6 +18,7 @@ simulation_app = app_launcher.app
 
 import torch
 import os
+from math import asin
 
 from isaaclab.envs import ManagerBasedRLEnv
 import isaaclab.sim as sim_utils
@@ -59,24 +60,30 @@ MOBILITY_CONFIG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.6, 0.0, 0.05),
+        pos=(0.6, 0.0, 0.0),
         # orientation<-(0, 0, -1.57)
         rot=(-0.7071, 0, 0, 0.7071),
+        joint_pos={"caster_yaw_joint": 0.0}
     ),
     actuators={
         "left_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit_sim=None,
+            effort_limit_sim=1000,
             velocity_limit_sim=None,
             stiffness=0.0,
             damping=1e4,
         ),
         "right_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit_sim=None,
+            effort_limit_sim=1000,
             velocity_limit_sim=None,
             stiffness=0.0,
             damping=1e4,
+        ),
+        "caster_yaw_actuator": IdealPDActuatorCfg(
+            joint_names_expr=["caster_yaw_joint"],
+            stiffness=100.0,
+            damping=10.0,
         ),
     },
 )
@@ -132,7 +139,8 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
+    caster_angle = mdp.JointPositionActionCfg(asset_name="mobility", joint_names=["caster_yaw_joint"], scale=1.0)
 
 @configclass
 class ObservationsCfg:
@@ -161,7 +169,6 @@ class EventCfg:
         },
     )
 
-
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
@@ -174,7 +181,6 @@ class RewardsCfg:
         weight=1.0,
         params={"asset_cfg": SceneEntityCfg("tiled_camera")},
         )
-
 
 @configclass
 class TerminationsCfg:
@@ -272,6 +278,24 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
         # simulation settings
         self.sim.render_interval = self.decimation
 
+
+def vel_controller(vel_msg):
+    wheel_base = 0.6
+    wheel_radius = 0.2
+
+    left_vel = vel_msg[0] - (vel_msg[1]*wheel_base/2)
+    right_vel = vel_msg[0] + (vel_msg[1]*wheel_base/2)
+
+    caster = asin(wheel_base*vel_msg[1]/vel_msg[0])
+
+    left_w, right_w = left_vel/wheel_radius, right_vel/wheel_radius
+
+    action = torch.tensor([[left_w, right_w, caster]])
+    print(action)
+
+    return action
+
+
 def main():
     """Main function: Launch viewer with only robot and world shown."""
     # create environment configuration
@@ -282,20 +306,17 @@ def main():
     # create and reset the scene (without stepping physics)
     env = ManagerBasedRLEnv(cfg=env_cfg)
 
+    sample_vel = [5, 0] # [v, w]
+
     while simulation_app.is_running():
         with torch.inference_mode():
 
-            joint_vel = torch.full_like(env.action_manager.action, 200.0)
-            print(joint_vel)
+            action = vel_controller(sample_vel)
+
             # step the environment
-            obs, rew, terminated, truncated, info = env.step(joint_vel)
+            obs, rew, terminated, truncated, info = env.step(action)
 
             simulation_app.update()
-
-            state = env.scene.get_state()
-
-            # joint_velocity = state["articulation"]["mobility"]["joint_velocity"]
-            # print(f"Joint velocity (actual): {joint_velocity}")
 
     # close the environment and simulation
     env.close()
