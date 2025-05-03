@@ -279,21 +279,24 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
         self.sim.render_interval = self.decimation
 
 
-def vel_controller(vel_msg):
+def vel_controller(vel_msgs: torch.Tensor) -> torch.Tensor:
     wheel_base = 0.6
     wheel_radius = 0.2
 
-    left_vel = vel_msg[0] - (vel_msg[1]*wheel_base/2)
-    right_vel = vel_msg[0] + (vel_msg[1]*wheel_base/2)
+    v = vel_msgs[:, 0]
+    w = vel_msgs[:, 1]
 
-    caster = asin(wheel_base*vel_msg[1]/vel_msg[0])
+    left_vel = v - (w * wheel_base / 2)
+    right_vel = v + (w * wheel_base / 2)
+    caster = torch.asin((wheel_base * w) / (v + 1e-6))  # avoid div by 0
 
-    left_w, right_w = left_vel/wheel_radius, right_vel/wheel_radius
+    left_w = left_vel / wheel_radius
+    right_w = right_vel / wheel_radius
 
-    action = torch.tensor([[left_w, right_w, caster]])
-    print(action)
+    single_action = torch.tensor([left_w, right_w, caster], dtype=torch.float32)
+    actions = single_action.repeat(args_cli.num_envs, 1).to(args_cli.device)
 
-    return action
+    return actions
 
 
 def main():
@@ -306,7 +309,7 @@ def main():
     # create and reset the scene (without stepping physics)
     env = ManagerBasedRLEnv(cfg=env_cfg)
 
-    sample_vel = [5, 0] # [v, w]
+    sample_vel = torch.tensor([[5, 0]]) # [v, w]
 
     while simulation_app.is_running():
         with torch.inference_mode():
