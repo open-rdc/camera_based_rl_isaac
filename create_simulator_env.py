@@ -21,7 +21,7 @@ import os
 
 from isaaclab.envs import ManagerBasedRLEnv
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.actuators import ImplicitActuatorCfg, IdealPDActuatorCfg
 from isaaclab.assets import ArticulationCfg
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
@@ -41,12 +41,12 @@ import mdp
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/Documents/robot_model/caster_fix_mobility.usd",
+        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/robots/mobility/usd/mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
-            max_linear_velocity=7.0,
-            max_angular_velocity=4.0,
-            max_depenetration_velocity=5.0,
+            max_linear_velocity=None,
+            max_angular_velocity=None,
+            max_depenetration_velocity=None,
             enable_gyroscopic_forces=True,
             disable_gravity=False,
         ),
@@ -59,29 +59,27 @@ MOBILITY_CONFIG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.6, 0.0, 0.0),
+        pos=(0.6, 0.0, 0.05),
         # orientation<-(0, 0, -1.57)
         rot=(-0.7071, 0, 0, 0.7071),
-        joint_pos={"left_wheel_joint": 0.0, "right_wheel_joint": 0.0, "caster_wheel_joint": 0.0},
     ),
     actuators={
         "left_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit_sim=100.0,
-            velocity_limit_sim=100.0,
-            stiffness=12.0,
-            damping=10.0,
+            effort_limit_sim=None,
+            velocity_limit_sim=None,
+            stiffness=0.0,
+            damping=1e4,
         ),
         "right_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit_sim=100.0,
-            velocity_limit_sim=100.0,
-            stiffness=12.0,
-            damping=10.0,
+            effort_limit_sim=None,
+            velocity_limit_sim=None,
+            stiffness=0.0,
+            damping=1e4,
         ),
     },
 )
-
 
 class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
@@ -95,8 +93,8 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
             restitution_combine_mode="multiply",
-            static_friction=0.0,
-            dynamic_friction=1.0
+            static_friction=0.8,
+            dynamic_friction=0.6
         ),
         debug_vis=True
     )
@@ -134,7 +132,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
 
 @configclass
 class ObservationsCfg:
@@ -287,7 +285,8 @@ def main():
     while simulation_app.is_running():
         with torch.inference_mode():
 
-            joint_vel = torch.randn_like(env.action_manager.action)
+            joint_vel = torch.full_like(env.action_manager.action, 200.0)
+            print(joint_vel)
             # step the environment
             obs, rew, terminated, truncated, info = env.step(joint_vel)
 
@@ -295,8 +294,8 @@ def main():
 
             state = env.scene.get_state()
 
-            root_pose = state["articulation"]["mobility"]["root_pose"]
-            print(f"Root pose: {root_pose}")
+            # joint_velocity = state["articulation"]["mobility"]["joint_velocity"]
+            # print(f"Joint velocity (actual): {joint_velocity}")
 
     # close the environment and simulation
     env.close()
