@@ -179,7 +179,7 @@ class RewardsCfg:
     running_reward = RewTerm(
         func=mdp.compute_reward,
         weight=1.0,
-        params={"asset_cfg": SceneEntityCfg("tiled_camera")},
+        params={"asset_cfg": SceneEntityCfg("mobility")},
         )
 
 @configclass
