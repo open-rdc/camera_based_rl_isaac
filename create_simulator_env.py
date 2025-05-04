@@ -91,6 +91,15 @@ MOBILITY_CONFIG = ArticulationCfg(
 class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
 
+        # ground plane
+    ground = AssetBaseCfg(
+        prim_path="/World/ground",
+        spawn=sim_utils.GroundPlaneCfg(size=(500.0, 500.0)),
+        init_state=ArticulationCfg.InitialStateCfg(
+            pos=(0.0, 0.0, -0.01),
+        ),
+    )
+
     # AI-Mobility-Park config
     mobility_park = TerrainImporterCfg(
         prim_path="/World/Terrain",
@@ -107,7 +116,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     )
 
     # robot 
-    mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="/World/envs/env_0/Mobility")
+    mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="{ENV_REGEX_NS}/Mobility")
 
     # lights
     dome_light = AssetBaseCfg(
@@ -116,7 +125,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     )
     
     tiled_camera = TiledCameraCfg(
-        prim_path="/World/envs/env_0/Mobility/base_link/Camera",
+        prim_path="{ENV_REGEX_NS}/Mobility/base_link/Camera",
         offset=TiledCameraCfg.OffsetCfg(
             pos=(0.35, 0.0, 0.55),
             rot=(0.5, 0.5, -0.5, -0.5),
@@ -293,8 +302,7 @@ def vel_controller(vel_msgs: torch.Tensor) -> torch.Tensor:
     left_w = left_vel / wheel_radius
     right_w = right_vel / wheel_radius
 
-    single_action = torch.tensor([left_w, right_w, caster], dtype=torch.float32)
-    actions = single_action.repeat(args_cli.num_envs, 1).to(args_cli.device)
+    actions = torch.stack([left_w, right_w, caster], dim=1).to(vel_msgs.device)
 
     return actions
 
@@ -309,7 +317,7 @@ def main():
     # create and reset the scene (without stepping physics)
     env = ManagerBasedRLEnv(cfg=env_cfg)
 
-    sample_vel = torch.tensor([[5, 0]]) # [v, w]
+    sample_vel = torch.tensor([[5.0, 0.0]] * args_cli.num_envs).to(args_cli.device)
 
     while simulation_app.is_running():
         with torch.inference_mode():
