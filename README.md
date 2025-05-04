@@ -30,7 +30,6 @@ cp -p ~/camera_based_rl_isaac/camera_based_rl ~/IsaacLab/source/isaaclab_tasks/i
 cp ~/camera_based_rl_isaac/train.py ~/IsaacLab/scripts/reinforcement_learning/sb3
 ```
 
-demo movie
 <p align="center">
   <img src="https://github.com/kyo0221/camera_based_rl_isaac/blob/feat/train/gif/task_path.gif" width="500">
   <img src="https://github.com/kyo0221/camera_based_rl_isaac/blob/feat/train/gif/train_path.gif" width="500">
@@ -45,7 +44,7 @@ python train.py --task camera_based_rl --enable_cameras --num_envs 3
 ```
 
 ## LICENSE
-このプロジェクトのソースコードは ![BSD3-Clause License](https://github.com/kyo0221/camera_based_rl_isaac/blob/feat/train/LICENSE) に基づいて公開されています
+このプロジェクトのソースコードは [BSD3-Clause License](https://github.com/kyo0221/camera_based_rl_isaac/blob/feat/train/LICENSE) に基づいて公開されています
 
-また, 一部に Isaac Lab（BSD 3-Clause ライセンス）のコードを含んでいます。  
+また, 一部に Isaac Lab（[BSD 3-Clause License](https://github.com/isaac-sim/IsaacLab/blob/main/LICENSE)）のコードを含んでいます。  
 詳細は LICENSE ファイルをご確認ください。
