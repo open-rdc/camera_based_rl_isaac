@@ -5,42 +5,28 @@ from typing import TYPE_CHECKING
 
 from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
-from isaaclab.utils.math import wrap_to_pi
 
+import cv2
+from math import sqrt
+from isaaclab.utils import convert_dict_to_backend
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
-
-
-def compute_reward(obs, action, next_obs, info):
-    """
-    Args:
-        obs (torch.Tensor): 現在の観測状態。
-        action (torch.Tensor): 実行されたアクション。
-        next_obs (torch.Tensor): 次の観測状態。
-        info (dict): 環境からの追加情報。
     
-    Returns:
-        torch.Tensor: 計算された報酬。
-    """
-    # 速度に関する報酬
-    speed = next_obs["linear_velocity"]  # 速度ベクトル
-    speed_reward = torch.norm(speed, dim=-1)  # 速度の大きさ
+def compute_reward(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Reward is proportional to the average absolute wheel speed."""
 
-    # 進行方向に関する報酬
-    heading = next_obs["heading_vector"]  # 進行方向ベクトル
-    track_direction = next_obs["track_direction"]  # トラックの方向ベクトル
-    heading_alignment = torch.sum(heading * track_direction, dim=-1)  # コサイン類似度
-    heading_reward = heading_alignment
+    asset: Articulation = env.scene[asset_cfg.name]
+    state = env.scene.get_state()
 
-    # トラックからの逸脱に対するペナルティ
-    off_track = next_obs["off_track"]  # トラックからの逸脱フラグ（0または1）
-    off_track_penalty = -1.0 * off_track
+    joint_velocities = state["articulation"][asset_cfg.name]["joint_velocity"]
 
-    # 衝突に対するペナルティ
-    collision = next_obs["collision"]  # 衝突フラグ（0または1）
-    collision_penalty = -1.0 * collision
+    joint_names = asset.data.joint_names
+    left_idx = joint_names.index("left_wheel_joint")
+    right_idx = joint_names.index("right_wheel_joint")
 
-    # 総合報酬の計算
-    reward = speed_reward + heading_reward + off_track_penalty + collision_penalty
+    # 速度の絶対値の平均を報酬とする（前進速度に比例）
+    left_speed = torch.abs(joint_velocities[:, left_idx])
+    right_speed = torch.abs(joint_velocities[:, right_idx])
+    reward = 0.5 * (left_speed + right_speed)
 
     return reward
