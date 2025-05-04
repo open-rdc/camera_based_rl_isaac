@@ -6,17 +6,34 @@
 
 ## Example
 
-1. demo
-デモ用のコード実行（3つの並列環境を作成）
+### 🎮 1. demo
+以下のコマンドで3つの並列環境を起動し、学習を行わずにシミュレーション環境のみを確認できます。
+
 ```
 python create_simulator_env.py --enable_cameras --num_envs 3
 ```
 
-2. training
-フォルダをIsaac Lab上に移動させます
+### 🏋️ 2. training
+以下のように、カスタムタスクと学習スクリプトを Isaac Lab の所定のディレクトリにコピーしてください。
+
+🔧 タスク用コードの配置
+
+```
+cp -p ~/camera_based_rl_isaac/camera_based_rl ~/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/classic
+```
+
+🎓 トレーニング用スクリプトの配置
+
+```
+cp ~/camera_based_rl_isaac/train.py ~/IsaacLab/scripts/reinforcement_learning/sb3
+```
+
+demo movie
+![demo](https://github.com/kyo0221/camera_based_rl_isaac/blob/feat/train/gif/task_path.gif)
+![demo](https://github.com/kyo0221/camera_based_rl_isaac/blob/feat/train/gif/train_path.gif)
 
 
-training用のコードを実行し, タスクを与えることで訓練が行えます.
+学習スクリプトを実行し、カメラ画像を観測すると共に並列環境で訓練を開始します
 ```
 cd ~/IsaacLab/scripts/reinforcement_learning/sb3
 python train.py --task camera_based_rl --enable_cameras --num_envs 3
