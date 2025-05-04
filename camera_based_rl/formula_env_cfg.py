@@ -1,28 +1,28 @@
-import argparse
+# import argparse
 
-from isaaclab.app import AppLauncher
+# from isaaclab.app import AppLauncher
 
-# add argparse arguments
-parser = argparse.ArgumentParser(
-    description="Traning for wheeled quadruped robot."
-)
-parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to spawn.")
-# append AppLauncher cli args
-AppLauncher.add_app_launcher_args(parser)
-# parse the arguments
-args_cli = parser.parse_args()
+# # add argparse arguments
+# parser = argparse.ArgumentParser(
+#     description="Traning for wheeled quadruped robot."
+# )
+# parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to spawn.")
+# # append AppLauncher cli args
+# AppLauncher.add_app_launcher_args(parser)
+# # parse the arguments
+# args_cli = parser.parse_args()
 
-# launch omniverse app
-app_launcher = AppLauncher(args_cli)
-simulation_app = app_launcher.app
+# # launch omniverse app
+# app_launcher = AppLauncher(args_cli)
+# simulation_app = app_launcher.app
 
 import torch
 import os
 import sys
+from math import asin
 
-from isaaclab.envs import ManagerBasedRLEnv
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.actuators import ImplicitActuatorCfg, IdealPDActuatorCfg
 from isaaclab.assets import ArticulationCfg
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
@@ -36,19 +36,21 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils import configclass
 from isaaclab.sensors import TiledCameraCfg, CameraCfg
+
 sys.path.append(os.environ['HOME'] + "/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/camera_based_rl/")
 import mdp
 
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/IsaacLab/source/extensions/isaaclab_tasks/omni/isaac/lab_tasks/manager_based/classic/camera_based_rl/mobility.usd",
+        usd_path=os.environ['HOME'] + "/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/camera_based_rl/mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
-            max_linear_velocity=7.0,
-            max_angular_velocity=4.0,
-            max_depenetration_velocity=5.0,
+            max_linear_velocity=None,
+            max_angular_velocity=None,
+            max_depenetration_velocity=None,
             enable_gyroscopic_forces=True,
+            disable_gravity=False,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
             enabled_self_collisions=False,
@@ -60,23 +62,28 @@ MOBILITY_CONFIG = ArticulationCfg(
     ),
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.6, 0.0, 0.0),
-        # orientation
+        # orientation<-(0, 0, -1.57)
         rot=(-0.7071, 0, 0, 0.7071),
-        joint_pos={"left_wheel_joint": 0.0, "right_wheel_joint": 0.0, "caster_joint": 0.0},
+        joint_pos={"caster_yaw_joint": 0.0}
     ),
     actuators={
         "left_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit_sim=100.0,
-            velocity_limit_sim=100.0,
-            stiffness=12.0,
-            damping=10.0,
+            effort_limit_sim=1000,
+            velocity_limit_sim=None,
+            stiffness=0.0,
+            damping=1e4,
         ),
         "right_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit_sim=100.0,
-            velocity_limit_sim=100.0,
-            stiffness=12.0,
+            effort_limit_sim=1000,
+            velocity_limit_sim=None,
+            stiffness=0.0,
+            damping=1e4,
+        ),
+        "caster_yaw_actuator": IdealPDActuatorCfg(
+            joint_names_expr=["caster_yaw_joint"],
+            stiffness=100.0,
             damping=10.0,
         ),
     },
@@ -86,30 +93,32 @@ MOBILITY_CONFIG = ArticulationCfg(
 class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
 
+    # ground plane
+    ground = AssetBaseCfg(
+        prim_path="/World/ground",
+        spawn=sim_utils.GroundPlaneCfg(size=(500.0, 500.0)),
+        init_state=ArticulationCfg.InitialStateCfg(
+            pos=(0.0, 0.0, -0.01),
+        ),
+    )
+
     # AI-Mobility-Park config
     mobility_park = TerrainImporterCfg(
         prim_path="/World/Terrain",
         terrain_type="usd",
-        usd_path=os.environ['HOME'] + "/IsaacLab/source/extensions/isaaclab_tasks/omni/isaac/lab_tasks/manager_based/classic/camera_based_rl/worlds/world/mobility_park.usd",
+        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/worlds/usd/mobility_park.usd",
         collision_group=1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
             restitution_combine_mode="multiply",
-            static_friction=0,
-            dynamic_friction=1.0
+            static_friction=0.8,
+            dynamic_friction=0.6
         ),
         debug_vis=False
     )
 
     # robot 
-    ## prim_path ???
     mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="{ENV_REGEX_NS}/Mobility")
-
-    # Ground-plane
-    ground = AssetBaseCfg(
-        prim_path="/World/ground",
-        spawn=sim_utils.GroundPlaneCfg(size=(100.0, 100.0)),
-    )
 
     # lights
     dome_light = AssetBaseCfg(
@@ -121,7 +130,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Mobility/base_link/Camera",
         offset=TiledCameraCfg.OffsetCfg(
             pos=(0.35, 0.0, 0.55),
-            rot=(0, 0, 0, 0),
+            rot=(0.5, 0.5, -0.5, -0.5),
             convention="opengl",
         ),
         data_types=["rgb", "depth", "semantic_segmentation"],
@@ -141,29 +150,19 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocities = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
+    caster_angle = mdp.JointPositionActionCfg(asset_name="mobility", joint_names=["caster_yaw_joint"], scale=1.0)
 
 @configclass
 class ObservationsCfg:
-
     @configclass
     class PolicyCfg(ObsGroup):
-        joint_pos_rel = ObsTerm(func=mdp.joint_pos_rel, params={"asset_cfg": SceneEntityCfg("mobility")})
-        joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel, params={"asset_cfg": SceneEntityCfg("mobility")})
-
-        def __post_init__(self) -> None:
-            self.concatenate_terms = True
-
-    @configclass
-    class ImageGroupCfg(ObsGroup):
         image = ObsTerm(func=mdp.image, params={"sensor_cfg": SceneEntityCfg("tiled_camera"), "data_type": "rgb"})
 
         def __post_init__(self) -> None:
             self.concatenate_terms = False
 
-    # 観測グループ
     policy: PolicyCfg = PolicyCfg()
-    image_group: ImageGroupCfg = ImageGroupCfg()
 
 @configclass
 class EventCfg:
@@ -181,7 +180,6 @@ class EventCfg:
         },
     )
 
-
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
@@ -192,19 +190,60 @@ class RewardsCfg:
     running_reward = RewTerm(
         func=mdp.compute_reward,
         weight=1.0,
-        params={"asset_cfg": SceneEntityCfg("tiled_camera")},
+        params={"asset_cfg": SceneEntityCfg("mobility")},
         )
-
 
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
-    # robot_out_of_course = DoneTerm(
-    #     func=mdp.termination,
-    #     params={"bounds": (-10.0, 10.0), "asset_cfg": SceneEntityCfg("tiled_camera")},
-    # )
+    time_out = DoneTerm(
+        func=mdp.time_out,
+        time_out=True,
+        )
+
+    robot_out_of_course = DoneTerm(
+        func=mdp.out_of_course_area,
+        params={
+            "center_line": [
+                (-2.187, 11.075),
+                (-2.068, 11.075),
+                (-2.216, 9.417),
+                (-2.168, 7.992),
+                (0.202, -20.024),
+                (0.865, -23.515),
+                (1.906, -26.231),
+                (4.406, -30.519),
+                (9.936, -36.250),
+                (14.200, -38.478),
+                (72.056, -56.604),
+                (77.550, -58.040),
+                (82.246, -59.230),
+                (86.111, -57.703),
+                (89.453, -56.711),
+                (92.395, -55.221),
+                (94.814, -53.563),
+                (99.075, -49.210),
+                (102.459, -43.237),
+                (104.063, -35.890),
+                (103.915, -33.450),
+                (99.309, 17.631),
+                (97.576, 22.856),
+                (93.949, 28.612),
+                (89.790, 32.436),
+                (84.576, 35.063),
+                (78.687, 36.400),
+                (72.507, 36.135),
+                (18.716, 31.860),
+                (9.171, 28.860),
+                (4.230, 24.858),
+                (-0.376, 17.834),
+                (-1.892, 12.410),
+                (-2.187, 11.075)
+            ], 
+            "course_width": 9.0,
+            "asset_cfg": SceneEntityCfg("mobility")},
+        )
 
 @configclass
 class CommandsCfg:
@@ -244,7 +283,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
         self.decimation = 2
         # simulation settings
         self.sim.dt = 0.005  # simulation timestep -> 200 Hz physics
-        self.episode_length_s = 5
+        self.episode_length_s = 100
         # viewer settings
         self.viewer.eye = (8.0, 0.0, 5.0)
         # simulation settings

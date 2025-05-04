@@ -1,0 +1,21 @@
+# Reference: https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml#L32
+seed: 42
+
+n_timesteps: !!float 2e6
+policy: 'MultiInputPolicy'
+n_steps: 128
+batch_size: 1152
+gae_lambda: 0.95
+gamma: 0.99
+n_epochs: 20
+ent_coef: 0.01
+learning_rate: !!float 3e-4
+clip_range: !!float 0.2
+policy_kwargs: "dict(
+                  features_extractor_class=Network,
+                  features_dim=128,
+                  net_arch=[],
+                )"
+vf_coef: 1.0
+max_grad_norm: 1.0
+device: "cuda:0"

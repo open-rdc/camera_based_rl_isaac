@@ -8,7 +8,7 @@ from .formula_env_cfg import CameraBasedRLCfg
 ##
 
 gym.register(
-    id="formula_camera_based_rl",
+    id="camera_based_rl",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
