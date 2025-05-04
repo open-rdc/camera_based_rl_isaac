@@ -91,7 +91,7 @@ MOBILITY_CONFIG = ArticulationCfg(
 class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
 
-        # ground plane
+    # ground plane
     ground = AssetBaseCfg(
         prim_path="/World/ground",
         spawn=sim_utils.GroundPlaneCfg(size=(500.0, 500.0)),
@@ -239,7 +239,7 @@ class TerminationsCfg:
                 (-1.892, 12.410),
                 (-2.187, 11.075)
             ], 
-            "course_width": 8.0,
+            "course_width": 9.0,
             "asset_cfg": SceneEntityCfg("mobility")},
         )
 
