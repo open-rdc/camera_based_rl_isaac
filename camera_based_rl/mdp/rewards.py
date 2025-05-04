@@ -23,9 +23,11 @@ def compute_reward(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.T
     left_idx = joint_names.index("left_wheel_joint")
     right_idx = joint_names.index("right_wheel_joint")
 
-    # 速度の絶対値の平均を報酬とする（前進速度に比例）
-    left_speed = torch.abs(joint_velocities[:, left_idx])
-    right_speed = torch.abs(joint_velocities[:, right_idx])
-    reward = 0.5 * (left_speed + right_speed)
+    left_speed = joint_velocities[:, left_idx]
+    right_speed = joint_velocities[:, right_idx]
+
+    # 前進速度（後退は報酬ゼロ）
+    forward_speed = 0.5 * (left_speed + right_speed)
+    reward = torch.clamp(forward_speed, min=0.0)  # shape: [num_envs]
 
     return reward

@@ -77,13 +77,11 @@ class Network(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict, features_dim: int = 128):
         super().__init__(observation_space, features_dim)
         
-        # 画像空間を取得
         image_space = observation_space.spaces["image"]
         self.image_shape = image_space.shape  # (H, W, C)
 
         n_input_channels = self.image_shape[2]  # C=3 for RGB
 
-        # 畳み込み層
         self.conv1 = nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=2)
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
@@ -102,7 +100,6 @@ class Network(BaseFeaturesExtractor):
             )
             conv_output_size = x.shape[1]
 
-        # 全結合層
         self.fc4 = nn.Linear(conv_output_size, 512)
         self.fc5 = nn.Linear(512, features_dim)
 
@@ -112,7 +109,6 @@ class Network(BaseFeaturesExtractor):
         torch.nn.init.kaiming_normal_(self.conv3.weight)
         torch.nn.init.kaiming_normal_(self.fc4.weight)
 
-        # 層構造
         self.cnn_layer = nn.Sequential(
             self.conv1, self.relu,
             self.conv2, self.relu,
