@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
 
-import cv2
 from math import sqrt
 from isaaclab.utils import convert_dict_to_backend
 if TYPE_CHECKING:
