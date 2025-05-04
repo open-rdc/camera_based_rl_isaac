@@ -91,6 +91,15 @@ MOBILITY_CONFIG = ArticulationCfg(
 class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
 
+        # ground plane
+    ground = AssetBaseCfg(
+        prim_path="/World/ground",
+        spawn=sim_utils.GroundPlaneCfg(size=(500.0, 500.0)),
+        init_state=ArticulationCfg.InitialStateCfg(
+            pos=(0.0, 0.0, -0.01),
+        ),
+    )
+
     # AI-Mobility-Park config
     mobility_park = TerrainImporterCfg(
         prim_path="/World/Terrain",
@@ -107,7 +116,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     )
 
     # robot 
-    mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="/World/envs/env_0/Mobility")
+    mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="{ENV_REGEX_NS}/Mobility")
 
     # lights
     dome_light = AssetBaseCfg(
@@ -116,7 +125,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     )
     
     tiled_camera = TiledCameraCfg(
-        prim_path="/World/envs/env_0/Mobility/base_link/Camera",
+        prim_path="{ENV_REGEX_NS}/Mobility/base_link/Camera",
         offset=TiledCameraCfg.OffsetCfg(
             pos=(0.35, 0.0, 0.55),
             rot=(0.5, 0.5, -0.5, -0.5),
@@ -179,7 +188,7 @@ class RewardsCfg:
     running_reward = RewTerm(
         func=mdp.compute_reward,
         weight=1.0,
-        params={"asset_cfg": SceneEntityCfg("tiled_camera")},
+        params={"asset_cfg": SceneEntityCfg("mobility")},
         )
 
 @configclass
@@ -279,21 +288,23 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
         self.sim.render_interval = self.decimation
 
 
-def vel_controller(vel_msg):
+def vel_controller(vel_msgs: torch.Tensor) -> torch.Tensor:
     wheel_base = 0.6
     wheel_radius = 0.2
 
-    left_vel = vel_msg[0] - (vel_msg[1]*wheel_base/2)
-    right_vel = vel_msg[0] + (vel_msg[1]*wheel_base/2)
+    v = vel_msgs[:, 0]
+    w = vel_msgs[:, 1]
 
-    caster = asin(wheel_base*vel_msg[1]/vel_msg[0])
+    left_vel = v - (w * wheel_base / 2)
+    right_vel = v + (w * wheel_base / 2)
+    caster = torch.asin((wheel_base * w) / (v + 1e-6))  # avoid div by 0
 
-    left_w, right_w = left_vel/wheel_radius, right_vel/wheel_radius
+    left_w = left_vel / wheel_radius
+    right_w = right_vel / wheel_radius
 
-    action = torch.tensor([[left_w, right_w, caster]])
-    print(action)
+    actions = torch.stack([left_w, right_w, caster], dim=1).to(vel_msgs.device)
 
-    return action
+    return actions
 
 
 def main():
@@ -306,7 +317,7 @@ def main():
     # create and reset the scene (without stepping physics)
     env = ManagerBasedRLEnv(cfg=env_cfg)
 
-    sample_vel = [5, 0] # [v, w]
+    sample_vel = torch.tensor([[5.0, 0.0]] * args_cli.num_envs).to(args_cli.device)
 
     while simulation_app.is_running():
         with torch.inference_mode():
