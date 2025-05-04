@@ -1,4 +1,4 @@
-# camera_baed_rl_isaac
+# camera_based_rl_isaac
 
 ## Overview
 本プロジェクトは、Isaac Lab を基盤とした強化学習環境で、RGB画像を観測として使用し、並列に複数エージェントを学習させるためのシステムです。
