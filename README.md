@@ -43,3 +43,9 @@ demo movie
 cd ~/IsaacLab/scripts/reinforcement_learning/sb3
 python train.py --task camera_based_rl --enable_cameras --num_envs 3
 ```
+
+## LICENSE
+このプロジェクトのソースコードは ![BSD3-Clause License](https://github.com/kyo0221/camera_based_rl_isaac/blob/feat/train/LICENSE) に基づいて公開されています
+
+また, 一部に Isaac Lab（BSD 3-Clause ライセンス）のコードを含んでいます。  
+詳細は LICENSE ファイルをご確認ください。
