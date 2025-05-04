@@ -112,7 +112,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
             static_friction=0.8,
             dynamic_friction=0.6
         ),
-        debug_vis=True
+        debug_vis=False
     )
 
     # robot 
