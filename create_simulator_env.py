@@ -45,9 +45,9 @@ MOBILITY_CONFIG = ArticulationCfg(
         usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/robots/mobility/usd/mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
-            max_linear_velocity=None,
-            max_angular_velocity=None,
-            max_depenetration_velocity=None,
+            max_linear_velocity=12.0,
+            max_angular_velocity=20.0,
+            max_depenetration_velocity=3.0,
             enable_gyroscopic_forces=True,
             disable_gravity=False,
         ),
@@ -68,22 +68,17 @@ MOBILITY_CONFIG = ArticulationCfg(
     actuators={
         "left_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit_sim=1000,
-            velocity_limit_sim=None,
-            stiffness=0.0,
-            damping=1e4,
+            effort_limit_sim=9.6,
+            velocity_limit_sim=82.9,
+            stiffness=1e4,
+            damping=50,
         ),
         "right_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit_sim=1000,
-            velocity_limit_sim=None,
-            stiffness=0.0,
-            damping=1e4,
-        ),
-        "caster_yaw_actuator": IdealPDActuatorCfg(
-            joint_names_expr=["caster_yaw_joint"],
-            stiffness=100.0,
-            damping=10.0,
+            effort_limit_sim=9.6,
+            velocity_limit_sim=82.9,
+            stiffness=1e4,
+            damping=50,
         ),
     },
 )
@@ -148,8 +143,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
-    caster_angle = mdp.JointPositionActionCfg(asset_name="mobility", joint_names=["caster_yaw_joint"], scale=1.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
 
 @configclass
 class ObservationsCfg:
@@ -297,12 +291,11 @@ def vel_controller(vel_msgs: torch.Tensor) -> torch.Tensor:
 
     left_vel = v - (w * wheel_base / 2)
     right_vel = v + (w * wheel_base / 2)
-    caster = torch.asin((wheel_base * w) / (v + 1e-6))  # avoid div by 0
 
     left_w = left_vel / wheel_radius
     right_w = right_vel / wheel_radius
 
-    actions = torch.stack([left_w, right_w, caster], dim=1).to(vel_msgs.device)
+    actions = torch.stack([left_w, right_w], dim=1).to(vel_msgs.device)
 
     return actions
 
