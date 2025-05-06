@@ -22,7 +22,7 @@ from math import asin
 
 from isaaclab.envs import ManagerBasedRLEnv
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg, IdealPDActuatorCfg
+from isaaclab.actuators import ImplicitActuatorCfg, IdealPDActuatorCfg, DCMotorCfg
 from isaaclab.assets import ArticulationCfg
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
@@ -66,49 +66,53 @@ MOBILITY_CONFIG = ArticulationCfg(
         joint_pos={"caster_yaw_joint": 0.0}
     ),
     actuators={
-        "left_wheel_actuator": ImplicitActuatorCfg(
+        "left_wheel_actuator": DCMotorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit_sim=9.6,
-            velocity_limit_sim=82.9,
-            stiffness=1e4,
-            damping=50,
+            effort_limit_sim=None,
+            saturation_effort=9.4,
+            velocity_limit=82.9,
+            stiffness=100.0,
+            damping=1.0,
+            friction=0.0,
         ),
-        "right_wheel_actuator": ImplicitActuatorCfg(
+        "right_wheel_actuator": DCMotorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit_sim=9.6,
-            velocity_limit_sim=82.9,
-            stiffness=1e4,
-            damping=50,
+            effort_limit_sim=None,
+            saturation_effort=9.4,
+            velocity_limit=82.9,
+            stiffness=100.0,
+            damping=1.0,
+            friction=0.0,
         ),
-    },
+    }
 )
 
 class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
 
     # ground plane
-    ground = AssetBaseCfg(
-        prim_path="/World/ground",
-        spawn=sim_utils.GroundPlaneCfg(size=(500.0, 500.0)),
-        init_state=ArticulationCfg.InitialStateCfg(
-            pos=(0.0, 0.0, -0.01),
-        ),
-    )
+    # ground = AssetBaseCfg(
+    #     prim_path="/World/ground",
+    #     spawn=sim_utils.GroundPlaneCfg(size=(500.0, 500.0)),
+    #     init_state=ArticulationCfg.InitialStateCfg(
+    #         pos=(0.0, 0.0, -0.01),
+    #     ),
+    # )
 
-    # AI-Mobility-Park config
-    mobility_park = TerrainImporterCfg(
-        prim_path="/World/Terrain",
-        terrain_type="usd",
-        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/worlds/usd/mobility_park.usd",
-        collision_group=1,
-        physics_material=sim_utils.RigidBodyMaterialCfg(
-            friction_combine_mode="multiply",
-            restitution_combine_mode="multiply",
-            static_friction=0.8,
-            dynamic_friction=0.6
-        ),
-        debug_vis=False
-    )
+    # # AI-Mobility-Park config
+    # mobility_park = TerrainImporterCfg(
+    #     prim_path="/World/Terrain",
+    #     terrain_type="usd",
+    #     usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/worlds/usd/mobility_park.usd",
+    #     collision_group=1,
+    #     physics_material=sim_utils.RigidBodyMaterialCfg(
+    #         friction_combine_mode="multiply",
+    #         restitution_combine_mode="multiply",
+    #         static_friction=0.8,
+    #         dynamic_friction=0.6
+    #     ),
+    #     debug_vis=False
+    # )
 
     # robot 
     mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="{ENV_REGEX_NS}/Mobility")
@@ -143,7 +147,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=0.1)
 
 @configclass
 class ObservationsCfg:
@@ -316,11 +320,17 @@ def main():
         with torch.inference_mode():
 
             action = vel_controller(sample_vel)
+            print(f"action vel : {action}")
 
             # step the environment
             obs, rew, terminated, truncated, info = env.step(action)
 
             simulation_app.update()
+
+            state = env.scene.get_state()
+            joint_velocity = state["articulation"]["mobility"]["joint_velocity"]
+
+            print(f"Joint velocity (actual): {joint_velocity}")
 
     # close the environment and simulation
     env.close()
