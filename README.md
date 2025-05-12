@@ -21,7 +21,7 @@ python create_simulator_env.py --enable_cameras --num_envs 3
 🔧 タスク用コードの配置
 
 ```
-cp -p ~/camera_based_rl_isaac/camera_based_rl ~/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/classic
+cp -r ~/camera_based_rl_isaac/camera_based_rl ~/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/classic
 ```
 
 🎓 トレーニング用スクリプトの配置
