@@ -66,19 +66,19 @@ MOBILITY_CONFIG = ArticulationCfg(
         joint_pos={"caster_yaw_joint": 0.0},
     ),
     actuators={
-        "left_wheel_actuator": DCMotorCfg(
+        "left_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit=940.4,
-            saturation_effort=940.4,
+            effort_limit=9.4,
+            # saturation_effort=940.4,
             velocity_limit=3033.0, # [deg/s]
             stiffness=100.0,
             damping=1.0,
             friction=0.9,
         ),
-        "right_wheel_actuator": DCMotorCfg(
+        "right_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit=940.4,
-            saturation_effort=940.4,
+            effort_limit=9.4,
+            # saturation_effort=940.4,
             velocity_limit=3033.0,
             stiffness=100.0,
             damping=1.0,
@@ -176,18 +176,38 @@ class EventCfg:
         },
     )
 
+    reset_waypoint_index = EventTerm(
+        func=mdp.reset_wp_idx,
+        mode="reset",
+    )
+
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
     # (1) Failure penalty
     terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
-    # (2) Primary task: keep robot running on the line
+    # (2) path following robot reward
     running_reward = RewTerm(
-        func=mdp.compute_reward,
+        func=mdp.target_path_reward,
         weight=1.0,
-        params={"asset_cfg": SceneEntityCfg("mobility")},
-        )
+        params={
+            "asset_cfg": SceneEntityCfg("mobility"),
+            "waypoints": [
+                (1.875, -8.873),
+                (38.043, -43.308),
+                (98.393, -0.736),
+                (64.330, 32.624),
+                (33.920, 30.395)
+            ],
+        },
+    )
+    # (3) time loss reward config
+    # time_reward = RewTerm(
+    #     func=mdp.time_loss_reward,
+    #     weight=-1.0,
+    #     params={"asset_cfg": SceneEntityCfg("mobility")},
+    # )
 
 @configclass
 class TerminationsCfg:
@@ -279,7 +299,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
         self.decimation = 2
         # simulation settings
         self.sim.dt = 0.005  # simulation timestep -> 200 Hz physics
-        self.episode_length_s = 100
+        self.episode_length_s = 1000
         # viewer settings
         self.viewer.eye = (8.0, 0.0, 5.0)
         # simulation settings
@@ -317,7 +337,7 @@ def main():
     # create and reset the scene (without stepping physics)
     env = ManagerBasedRLEnv(cfg=env_cfg)
 
-    sample_vel = torch.tensor([[10.0, 0.0]] * args_cli.num_envs).to(args_cli.device)
+    sample_vel = torch.tensor([[7.0, 0.0]] * args_cli.num_envs).to(args_cli.device)
 
     while simulation_app.is_running():
         with torch.inference_mode():
