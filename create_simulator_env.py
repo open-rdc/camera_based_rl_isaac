@@ -42,12 +42,12 @@ import mdp
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/robots/mobility/usd/mobility.usd",
+        usd_path=os.environ['HOME'] + "/Documents/robot_model/param_fix_mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
             max_linear_velocity=12.0,
-            max_angular_velocity=20.0,
-            max_depenetration_velocity=3.0,
+            max_angular_velocity=20000.0,
+            max_depenetration_velocity=None,
             enable_gyroscopic_forces=True,
             disable_gravity=False,
         ),
@@ -63,26 +63,26 @@ MOBILITY_CONFIG = ArticulationCfg(
         pos=(0.6, 0.0, 0.0),
         # orientation<-(0, 0, -1.57)
         rot=(-0.7071, 0, 0, 0.7071),
-        joint_pos={"caster_yaw_joint": 0.0}
+        joint_pos={"caster_yaw_joint": 0.0},
     ),
     actuators={
         "left_wheel_actuator": DCMotorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit_sim=None,
-            saturation_effort=9.4,
-            velocity_limit=82.9,
+            effort_limit=940.4,
+            saturation_effort=940.4,
+            velocity_limit=3033.0, # [deg/s]
             stiffness=100.0,
             damping=1.0,
-            friction=0.0,
+            friction=0.9,
         ),
         "right_wheel_actuator": DCMotorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit_sim=None,
-            saturation_effort=9.4,
-            velocity_limit=82.9,
+            effort_limit=940.4,
+            saturation_effort=940.4,
+            velocity_limit=3033.0,
             stiffness=100.0,
             damping=1.0,
-            friction=0.0,
+            friction=0.9,
         ),
     }
 )
@@ -91,28 +91,28 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
 
     # ground plane
-    # ground = AssetBaseCfg(
-    #     prim_path="/World/ground",
-    #     spawn=sim_utils.GroundPlaneCfg(size=(500.0, 500.0)),
-    #     init_state=ArticulationCfg.InitialStateCfg(
-    #         pos=(0.0, 0.0, -0.01),
-    #     ),
-    # )
+    ground = AssetBaseCfg(
+        prim_path="/World/ground",
+        spawn=sim_utils.GroundPlaneCfg(size=(500.0, 500.0)),
+        init_state=ArticulationCfg.InitialStateCfg(
+            pos=(0.0, 0.0, -0.01),
+        ),
+    )
 
-    # # AI-Mobility-Park config
-    # mobility_park = TerrainImporterCfg(
-    #     prim_path="/World/Terrain",
-    #     terrain_type="usd",
-    #     usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/worlds/usd/mobility_park.usd",
-    #     collision_group=1,
-    #     physics_material=sim_utils.RigidBodyMaterialCfg(
-    #         friction_combine_mode="multiply",
-    #         restitution_combine_mode="multiply",
-    #         static_friction=0.8,
-    #         dynamic_friction=0.6
-    #     ),
-    #     debug_vis=False
-    # )
+    # AI-Mobility-Park config
+    mobility_park = TerrainImporterCfg(
+        prim_path="/World/Terrain",
+        terrain_type="usd",
+        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/worlds/usd/mobility_park.usd",
+        collision_group=1,
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            friction_combine_mode="multiply",
+            restitution_combine_mode="multiply",
+            static_friction=0.8,
+            dynamic_friction=0.6
+        ),
+        debug_vis=False
+    )
 
     # robot 
     mobility: ArticulationCfg = MOBILITY_CONFIG.replace(prim_path="{ENV_REGEX_NS}/Mobility")
@@ -147,7 +147,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=0.1)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
 
 @configclass
 class ObservationsCfg:
@@ -170,9 +170,9 @@ class EventCfg:
         func=mdp.reset_joints_by_offset,
         mode="reset",
         params={
-            "asset_cfg": SceneEntityCfg("mobility", joint_names=["left_wheel_joint", "right_wheel_joint"]),
-            "position_range": (-1.0, 1.0),
-            "velocity_range": (-0.5, 0.5),
+            "asset_cfg": SceneEntityCfg("mobility", joint_names=["caster_yaw_joint", "left_wheel_joint", "right_wheel_joint", "caster_roll_joint"]),
+            "position_range": (-0.1, 0.1),
+            "velocity_range": (-0.05, 0.05),
         },
     )
 
@@ -296,8 +296,11 @@ def vel_controller(vel_msgs: torch.Tensor) -> torch.Tensor:
     left_vel = v - (w * wheel_base / 2)
     right_vel = v + (w * wheel_base / 2)
 
-    left_w = left_vel / wheel_radius
-    right_w = right_vel / wheel_radius
+    left_w_deg = left_vel / wheel_radius # rad/s
+    right_w_deg = right_vel / wheel_radius
+
+    left_w = left_w_deg * 180 / 3.14 # deg/s
+    right_w = right_w_deg * 180 / 3.14
 
     actions = torch.stack([left_w, right_w], dim=1).to(vel_msgs.device)
 
@@ -314,7 +317,7 @@ def main():
     # create and reset the scene (without stepping physics)
     env = ManagerBasedRLEnv(cfg=env_cfg)
 
-    sample_vel = torch.tensor([[5.0, 0.0]] * args_cli.num_envs).to(args_cli.device)
+    sample_vel = torch.tensor([[10.0, 0.0]] * args_cli.num_envs).to(args_cli.device)
 
     while simulation_app.is_running():
         with torch.inference_mode():
