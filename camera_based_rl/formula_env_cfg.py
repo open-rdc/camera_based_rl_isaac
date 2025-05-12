@@ -43,11 +43,11 @@ import mdp
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/camera_based_rl/mobility.usd",
+        usd_path=os.environ['HOME'] + "/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/camera_based_rl/param_fix_mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
-            max_linear_velocity=None,
-            max_angular_velocity=None,
+            max_linear_velocity=12.0,
+            max_angular_velocity=20000.0,
             max_depenetration_velocity=None,
             enable_gyroscopic_forces=True,
             disable_gravity=False,
@@ -69,24 +69,23 @@ MOBILITY_CONFIG = ArticulationCfg(
     actuators={
         "left_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit_sim=1000,
-            velocity_limit_sim=None,
-            stiffness=0.0,
-            damping=1e4,
+            effort_limit=9.4,
+            # saturation_effort=940.4,
+            velocity_limit=3033.0, # [deg/s]
+            stiffness=100.0,
+            damping=1.0,
+            friction=0.9,
         ),
         "right_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit_sim=1000,
-            velocity_limit_sim=None,
-            stiffness=0.0,
-            damping=1e4,
-        ),
-        "caster_yaw_actuator": IdealPDActuatorCfg(
-            joint_names_expr=["caster_yaw_joint"],
+            effort_limit=9.4,
+            # saturation_effort=940.4,
+            velocity_limit=3033.0,
             stiffness=100.0,
-            damping=10.0,
+            damping=1.0,
+            friction=0.9,
         ),
-    },
+    }
 )
 
 
@@ -135,7 +134,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
         ),
         data_types=["rgb", "depth", "semantic_segmentation"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=156.08,
+            focal_length=22.0,
             focus_distance=400,
             horizontal_aperture=20.0,
             clipping_range=(0.02, 300)
@@ -150,8 +149,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
-    caster_angle = mdp.JointPositionActionCfg(asset_name="mobility", joint_names=["caster_yaw_joint"], scale=1.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
 
 @configclass
 class ObservationsCfg:
@@ -174,10 +172,15 @@ class EventCfg:
         func=mdp.reset_joints_by_offset,
         mode="reset",
         params={
-            "asset_cfg": SceneEntityCfg("mobility", joint_names=["left_wheel_joint", "right_wheel_joint"]),
-            "position_range": (-1.0, 1.0),
-            "velocity_range": (-0.5, 0.5),
+            "asset_cfg": SceneEntityCfg("mobility", joint_names=["caster_yaw_joint", "left_wheel_joint", "right_wheel_joint", "caster_roll_joint"]),
+            "position_range": (-0.1, 0.1),
+            "velocity_range": (-0.05, 0.05),
         },
+    )
+
+    reset_waypoint_index = EventTerm(
+        func=mdp.reset_wp_idx,
+        mode="reset",
     )
 
 @configclass
@@ -186,12 +189,27 @@ class RewardsCfg:
 
     # (1) Failure penalty
     terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
-    # (2) Primary task: keep robot running on the line
+    # (2) path following robot reward
     running_reward = RewTerm(
-        func=mdp.compute_reward,
+        func=mdp.target_path_reward,
         weight=1.0,
-        params={"asset_cfg": SceneEntityCfg("mobility")},
-        )
+        params={
+            "asset_cfg": SceneEntityCfg("mobility"),
+            "waypoints": [
+                (1.875, -8.873),
+                (38.043, -43.308),
+                (98.393, -0.736),
+                (64.330, 32.624),
+                (33.920, 30.395)
+            ],
+        },
+    )
+    # (3) time loss reward config
+    # time_reward = RewTerm(
+    #     func=mdp.time_loss_reward,
+    #     weight=-1.0,
+    #     params={"asset_cfg": SceneEntityCfg("mobility")},
+    # )
 
 @configclass
 class TerminationsCfg:
@@ -283,7 +301,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
         self.decimation = 2
         # simulation settings
         self.sim.dt = 0.005  # simulation timestep -> 200 Hz physics
-        self.episode_length_s = 100
+        self.episode_length_s = 1000
         # viewer settings
         self.viewer.eye = (8.0, 0.0, 5.0)
         # simulation settings
