@@ -35,13 +35,13 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.12 0.12"/>
       </geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.12 0.12"/>
       </geometry>
     </collision>
   </link>
@@ -56,13 +56,13 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.12 0.12"/>
       </geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.12 0.12"/>
       </geometry>
     </collision>
   </link>
