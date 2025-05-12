@@ -42,7 +42,7 @@ import mdp
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/Documents/robot_model/param_fix_mobility.usd",
+        usd_path=os.environ['HOME'] + "/canera_based_rl_isaac/assets/robots/mobility/usd/param_fix_mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
             max_linear_velocity=12.0,
