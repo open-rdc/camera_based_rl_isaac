@@ -42,7 +42,8 @@ import mdp
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/canera_based_rl_isaac/assets/robots/mobility/usd/param_fix_mobility.usd",
+        # usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/robots/mobility/usd/param_fix_mobility.usd",
+        usd_path=os.environ['HOME'] + "/Documents/robot_model/param_fix_mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
             max_linear_velocity=12.0,
@@ -71,7 +72,7 @@ MOBILITY_CONFIG = ArticulationCfg(
             effort_limit=9.4,
             # saturation_effort=940.4,
             velocity_limit=3033.0, # [deg/s]
-            stiffness=100.0,
+            stiffness=0.0,
             damping=1.0,
             friction=0.9,
         ),
@@ -80,9 +81,17 @@ MOBILITY_CONFIG = ArticulationCfg(
             effort_limit=9.4,
             # saturation_effort=940.4,
             velocity_limit=3033.0,
-            stiffness=100.0,
+            stiffness=0.0,
             damping=1.0,
             friction=0.9,
+        ),
+        "caster_yaw_actuator": IdealPDActuatorCfg(
+            joint_names_expr=["caster_yaw_joint"],
+            effort_limit=1e4,
+            velocity_limit=None,
+            stiffness=20.0,
+            damping=5.0,
+            friction=0.2,
         ),
     }
 )
@@ -148,6 +157,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 @configclass
 class ActionsCfg:
     joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
+    caster_position = mdp.JointPositionActionCfg(asset_name="mobility", joint_names=["caster_yaw_joint"], scale=1.0)
 
 @configclass
 class ObservationsCfg:
@@ -307,7 +317,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
 
 
 def vel_controller(vel_msgs: torch.Tensor) -> torch.Tensor:
-    wheel_base = 0.6
+    wheel_base = 0.8
     wheel_radius = 0.2
 
     v = vel_msgs[:, 0]
@@ -316,13 +326,15 @@ def vel_controller(vel_msgs: torch.Tensor) -> torch.Tensor:
     left_vel = v - (w * wheel_base / 2)
     right_vel = v + (w * wheel_base / 2)
 
-    left_w_deg = left_vel / wheel_radius # rad/s
-    right_w_deg = right_vel / wheel_radius
+    left_w_rad = left_vel / wheel_radius # rad/s
+    right_w_rad = right_vel / wheel_radius
 
-    left_w = left_w_deg * 180 / 3.14 # deg/s
-    right_w = right_w_deg * 180 / 3.14
+    left_w_deg = left_w_rad * 180 / 3.14 # deg/s
+    right_w_deg = right_w_rad * 180 / 3.14
 
-    actions = torch.stack([left_w, right_w], dim=1).to(vel_msgs.device)
+    caster_angle = torch.tensor([0.0]).to(vel_msgs.device)
+
+    actions = torch.stack([left_w_deg, right_w_deg, caster_angle], dim=1).to(vel_msgs.device)
 
     return actions
 
@@ -337,7 +349,7 @@ def main():
     # create and reset the scene (without stepping physics)
     env = ManagerBasedRLEnv(cfg=env_cfg)
 
-    sample_vel = torch.tensor([[7.0, 0.0]] * args_cli.num_envs).to(args_cli.device)
+    sample_vel = torch.tensor([[5.0, 10.0]] * args_cli.num_envs).to(args_cli.device)
 
     while simulation_app.is_running():
         with torch.inference_mode():
@@ -351,7 +363,7 @@ def main():
             simulation_app.update()
 
             state = env.scene.get_state()
-            joint_velocity = state["articulation"]["mobility"]["joint_velocity"]
+            joint_velocity = state["articulation"]["mobility"]["joint_position"]
 
             print(f"Joint velocity (actual): {joint_velocity}")
 
