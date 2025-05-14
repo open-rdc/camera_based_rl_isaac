@@ -22,7 +22,7 @@ import sys
 from math import asin
 
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg, IdealPDActuatorCfg
+from isaaclab.actuators import ImplicitActuatorCfg, IdealPDActuatorCfg, DCMotorCfg
 from isaaclab.assets import ArticulationCfg
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
@@ -73,7 +73,7 @@ MOBILITY_CONFIG = ArticulationCfg(
             # saturation_effort=940.4,
             velocity_limit=3033.0, # [deg/s]
             stiffness=0.0,
-            damping=1.0,
+            damping=2.0,
             friction=0.9,
         ),
         "right_wheel_actuator": ImplicitActuatorCfg(
@@ -82,8 +82,16 @@ MOBILITY_CONFIG = ArticulationCfg(
             # saturation_effort=940.4,
             velocity_limit=3033.0,
             stiffness=0.0,
-            damping=1.0,
+            damping=2.0,
             friction=0.9,
+        ),
+        "caster_yaw_actuator": IdealPDActuatorCfg(
+            joint_names_expr=["caster_yaw_joint"],
+            effort_limit=1,
+            velocity_limit=None,
+            stiffness=20.0,
+            damping=5.0,
+            friction=0.2,
         ),
     }
 )
@@ -149,7 +157,8 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1430.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=2000.0)
+    # caster_position = mdp.JointPositionActionCfg(asset_name="mobility", joint_names=["caster_yaw_joint"], scale=1.0)
 
 @configclass
 class ObservationsCfg:
