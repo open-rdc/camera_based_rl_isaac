@@ -196,7 +196,7 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # (1) Failure penalty
-    terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-20.0)
     # (2) path following robot reward
     running_reward = RewTerm(
         func=mdp.target_path_reward,
