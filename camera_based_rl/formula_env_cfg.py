@@ -72,7 +72,7 @@ MOBILITY_CONFIG = ArticulationCfg(
             effort_limit=9.4,
             # saturation_effort=940.4,
             velocity_limit=3033.0, # [deg/s]
-            stiffness=100.0,
+            stiffness=0.0,
             damping=1.0,
             friction=0.9,
         ),
@@ -81,7 +81,7 @@ MOBILITY_CONFIG = ArticulationCfg(
             effort_limit=9.4,
             # saturation_effort=940.4,
             velocity_limit=3033.0,
-            stiffness=100.0,
+            stiffness=0.0,
             damping=1.0,
             friction=0.9,
         ),
@@ -149,7 +149,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1430.0)
 
 @configclass
 class ObservationsCfg:
