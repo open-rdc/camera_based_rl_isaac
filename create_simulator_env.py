@@ -67,27 +67,27 @@ MOBILITY_CONFIG = ArticulationCfg(
         joint_pos={"caster_yaw_joint": 0.0},
     ),
     actuators={
-        "left_wheel_actuator": ImplicitActuatorCfg(
+        "left_wheel_actuator": DCMotorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit=9.4,
-            # saturation_effort=940.4,
+            effort_limit=940.4,
+            saturation_effort=940.4,
             velocity_limit=3033.0, # [deg/s]
             stiffness=0.0,
-            damping=1.0,
+            damping=2.0,
             friction=0.9,
         ),
-        "right_wheel_actuator": ImplicitActuatorCfg(
+        "right_wheel_actuator": DCMotorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit=9.4,
-            # saturation_effort=940.4,
+            effort_limit=940.4,
+            saturation_effort=940.4,
             velocity_limit=3033.0,
             stiffness=0.0,
-            damping=1.0,
+            damping=2.0,
             friction=0.9,
         ),
         "caster_yaw_actuator": IdealPDActuatorCfg(
             joint_names_expr=["caster_yaw_joint"],
-            effort_limit=1e4,
+            effort_limit=1,
             velocity_limit=None,
             stiffness=20.0,
             damping=5.0,
@@ -349,7 +349,7 @@ def main():
     # create and reset the scene (without stepping physics)
     env = ManagerBasedRLEnv(cfg=env_cfg)
 
-    sample_vel = torch.tensor([[5.0, 10.0]] * args_cli.num_envs).to(args_cli.device)
+    sample_vel = torch.tensor([[5.0, 0.0]] * args_cli.num_envs).to(args_cli.device)
 
     while simulation_app.is_running():
         with torch.inference_mode():
