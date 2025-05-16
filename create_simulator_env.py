@@ -22,7 +22,7 @@ from math import asin
 
 from isaaclab.envs import ManagerBasedRLEnv
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg, IdealPDActuatorCfg
+from isaaclab.actuators import ImplicitActuatorCfg, IdealPDActuatorCfg, DCMotorCfg
 from isaaclab.assets import ArticulationCfg
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
@@ -42,11 +42,12 @@ import mdp
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/robots/mobility/usd/mobility.usd",
+        # usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/robots/mobility/usd/param_fix_mobility.usd",
+        usd_path=os.environ['HOME'] + "/Documents/robot_model/param_fix_mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
-            max_linear_velocity=None,
-            max_angular_velocity=None,
+            max_linear_velocity=12.0,
+            max_angular_velocity=20000.0,
             max_depenetration_velocity=None,
             enable_gyroscopic_forces=True,
             disable_gravity=False,
@@ -63,29 +64,36 @@ MOBILITY_CONFIG = ArticulationCfg(
         pos=(0.6, 0.0, 0.0),
         # orientation<-(0, 0, -1.57)
         rot=(-0.7071, 0, 0, 0.7071),
-        joint_pos={"caster_yaw_joint": 0.0}
+        joint_pos={"caster_yaw_joint": 0.0},
     ),
     actuators={
-        "left_wheel_actuator": ImplicitActuatorCfg(
+        "left_wheel_actuator": DCMotorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit_sim=1000,
-            velocity_limit_sim=None,
+            effort_limit=940.4,
+            saturation_effort=940.4,
+            velocity_limit=3033.0, # [deg/s]
             stiffness=0.0,
-            damping=1e4,
+            damping=100.0,
+            friction=0.9,
         ),
-        "right_wheel_actuator": ImplicitActuatorCfg(
+        "right_wheel_actuator": DCMotorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit_sim=1000,
-            velocity_limit_sim=None,
+            effort_limit=940.4,
+            saturation_effort=940.4,
+            velocity_limit=3033.0,
             stiffness=0.0,
-            damping=1e4,
+            damping=100.0,
+            friction=0.9,
         ),
         "caster_yaw_actuator": IdealPDActuatorCfg(
             joint_names_expr=["caster_yaw_joint"],
-            stiffness=100.0,
-            damping=10.0,
+            effort_limit=1,
+            velocity_limit=None,
+            stiffness=20.0,
+            damping=5.0,
+            friction=0.2,
         ),
-    },
+    }
 )
 
 class CameraBasedRLSceneCfg(InteractiveSceneCfg):
@@ -148,8 +156,8 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=100.0)
-    caster_angle = mdp.JointPositionActionCfg(asset_name="mobility", joint_names=["caster_yaw_joint"], scale=1.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
+    caster_position = mdp.JointPositionActionCfg(asset_name="mobility", joint_names=["caster_yaw_joint"], scale=1.0)
 
 @configclass
 class ObservationsCfg:
@@ -172,10 +180,15 @@ class EventCfg:
         func=mdp.reset_joints_by_offset,
         mode="reset",
         params={
-            "asset_cfg": SceneEntityCfg("mobility", joint_names=["left_wheel_joint", "right_wheel_joint"]),
-            "position_range": (-1.0, 1.0),
-            "velocity_range": (-0.5, 0.5),
+            "asset_cfg": SceneEntityCfg("mobility", joint_names=["caster_yaw_joint", "left_wheel_joint", "right_wheel_joint", "caster_roll_joint"]),
+            "position_range": (-0.1, 0.1),
+            "velocity_range": (-0.05, 0.05),
         },
+    )
+
+    reset_waypoint_index = EventTerm(
+        func=mdp.reset_wp_idx,
+        mode="reset",
     )
 
 @configclass
@@ -183,13 +196,28 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # (1) Failure penalty
-    terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
-    # (2) Primary task: keep robot running on the line
+    terminating = RewTerm(func=mdp.is_terminated, weight=-20.0)
+    # (2) path following robot reward
     running_reward = RewTerm(
-        func=mdp.compute_reward,
+        func=mdp.target_path_reward,
         weight=1.0,
-        params={"asset_cfg": SceneEntityCfg("mobility")},
-        )
+        params={
+            "asset_cfg": SceneEntityCfg("mobility"),
+            "waypoints": [
+                (1.875, -8.873),
+                (38.043, -43.308),
+                (98.393, -0.736),
+                (64.330, 32.624),
+                (33.920, 30.395)
+            ],
+        },
+    )
+    # (3) time loss reward config
+    # time_reward = RewTerm(
+    #     func=mdp.time_loss_reward,
+    #     weight=-1.0,
+    #     params={"asset_cfg": SceneEntityCfg("mobility")},
+    # )
 
 @configclass
 class TerminationsCfg:
@@ -281,7 +309,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
         self.decimation = 2
         # simulation settings
         self.sim.dt = 0.005  # simulation timestep -> 200 Hz physics
-        self.episode_length_s = 100
+        self.episode_length_s = 1000
         # viewer settings
         self.viewer.eye = (8.0, 0.0, 5.0)
         # simulation settings
@@ -289,7 +317,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
 
 
 def vel_controller(vel_msgs: torch.Tensor) -> torch.Tensor:
-    wheel_base = 0.6
+    wheel_base = 0.8
     wheel_radius = 0.2
 
     v = vel_msgs[:, 0]
@@ -297,12 +325,16 @@ def vel_controller(vel_msgs: torch.Tensor) -> torch.Tensor:
 
     left_vel = v - (w * wheel_base / 2)
     right_vel = v + (w * wheel_base / 2)
-    caster = torch.asin((wheel_base * w) / (v + 1e-6))  # avoid div by 0
 
-    left_w = left_vel / wheel_radius
-    right_w = right_vel / wheel_radius
+    left_w_rad = left_vel / wheel_radius # rad/s
+    right_w_rad = right_vel / wheel_radius
 
-    actions = torch.stack([left_w, right_w, caster], dim=1).to(vel_msgs.device)
+    left_w_deg = left_w_rad * 180 / 3.14 # deg/s
+    right_w_deg = right_w_rad * 180 / 3.14
+
+    caster_angle = torch.tensor([0.0]).to(vel_msgs.device)
+
+    actions = torch.stack([left_w_deg, right_w_deg, caster_angle], dim=1).to(vel_msgs.device)
 
     return actions
 
@@ -323,11 +355,17 @@ def main():
         with torch.inference_mode():
 
             action = vel_controller(sample_vel)
+            print(f"action vel : {action}")
 
             # step the environment
             obs, rew, terminated, truncated, info = env.step(action)
 
             simulation_app.update()
+
+            state = env.scene.get_state()
+            joint_velocity = state["articulation"]["mobility"]["joint_position"]
+
+            print(f"Joint velocity (actual): {joint_velocity}")
 
     # close the environment and simulation
     env.close()
