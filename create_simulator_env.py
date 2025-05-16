@@ -73,7 +73,7 @@ MOBILITY_CONFIG = ArticulationCfg(
             saturation_effort=940.4,
             velocity_limit=3033.0, # [deg/s]
             stiffness=0.0,
-            damping=2.0,
+            damping=100.0,
             friction=0.9,
         ),
         "right_wheel_actuator": DCMotorCfg(
@@ -82,7 +82,7 @@ MOBILITY_CONFIG = ArticulationCfg(
             saturation_effort=940.4,
             velocity_limit=3033.0,
             stiffness=0.0,
-            damping=2.0,
+            damping=100.0,
             friction=0.9,
         ),
         "caster_yaw_actuator": IdealPDActuatorCfg(
