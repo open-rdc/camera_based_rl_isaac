@@ -50,6 +50,7 @@ def target_path_reward(env: ManagerBasedRLEnv, waypoints: list[tuple[float, floa
 
     dists = to_goal_vec.norm(dim=1)
     reached = dists < radius
+    reward += reached.float() * 100.0
     curr_wp_idx[reached] = (curr_wp_idx[reached] + 1) % num_wps
 
     return reward
