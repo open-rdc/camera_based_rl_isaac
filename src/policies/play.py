@@ -96,6 +96,7 @@ def main():
     log_dir = os.path.dirname(checkpoint_path)
 
     # post-process agent configuration
+    globals()["Network"] = Network
     agent_cfg = process_sb3_cfg(agent_cfg)
 
     # create isaac environment
@@ -137,7 +138,7 @@ def main():
         checkpoint_path,
         env,
         print_system_info=True,
-        custom_objects={"policy_kwargs": {"features_extractor_class": Network}},
+        custom_objects={"features_extractor_class": Network},
     )
     dt = env.unwrapped.physics_dt
 
