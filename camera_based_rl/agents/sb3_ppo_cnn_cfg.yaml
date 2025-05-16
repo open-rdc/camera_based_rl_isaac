@@ -11,10 +11,11 @@ n_epochs: 20
 ent_coef: 0.01
 learning_rate: !!float 3e-4
 clip_range: !!float 0.2
-policy_kwargs:
-  features_extractor_class: !!python/name:cnn.Network
-  features_dim: 128
-  net_arch: []
+policy_kwargs: "dict(
+                  features_extractor_class=Network,
+                  features_dim=128,
+                  net_arch=[],
+                )"
 vf_coef: 1.0
 max_grad_norm: 1.0
 device: "cuda:0"
