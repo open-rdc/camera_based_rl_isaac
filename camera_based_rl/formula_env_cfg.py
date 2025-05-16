@@ -46,8 +46,8 @@ MOBILITY_CONFIG = ArticulationCfg(
         usd_path=os.environ['HOME'] + "/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/camera_based_rl/param_fix_mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
-            max_linear_velocity=12.0,
-            max_angular_velocity=20000.0,
+            max_linear_velocity=1e5,
+            max_angular_velocity=1e10,
             max_depenetration_velocity=None,
             enable_gyroscopic_forces=True,
             disable_gravity=False,
@@ -71,25 +71,25 @@ MOBILITY_CONFIG = ArticulationCfg(
             joint_names_expr=["left_wheel_joint"],
             effort_limit=9.4,
             # saturation_effort=940.4,
-            velocity_limit=3033.0, # [deg/s]
+            velocity_limit=1e5, # [deg/s]
             stiffness=0.0,
-            damping=2.0,
+            damping=100.0,
             friction=0.9,
         ),
         "right_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["right_wheel_joint"],
             effort_limit=9.4,
             # saturation_effort=940.4,
-            velocity_limit=3033.0,
+            velocity_limit=1e5,
             stiffness=0.0,
-            damping=2.0,
+            damping=100.0,
             friction=0.9,
         ),
         "caster_yaw_actuator": IdealPDActuatorCfg(
             joint_names_expr=["caster_yaw_joint"],
-            effort_limit=1,
+            effort_limit=1.0,
             velocity_limit=None,
-            stiffness=20.0,
+            stiffness=10.0,
             damping=5.0,
             friction=0.2,
         ),
@@ -157,7 +157,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=2000.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=20000.0)
     # caster_position = mdp.JointPositionActionCfg(asset_name="mobility", joint_names=["caster_yaw_joint"], scale=1.0)
 
 @configclass
@@ -197,11 +197,11 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # (1) Failure penalty
-    terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-100.0)
     # (2) path following robot reward
     running_reward = RewTerm(
         func=mdp.target_path_reward,
-        weight=1.0,
+        weight=10.0,
         params={
             "asset_cfg": SceneEntityCfg("mobility"),
             "waypoints": [
@@ -213,12 +213,6 @@ class RewardsCfg:
             ],
         },
     )
-    # (3) time loss reward config
-    # time_reward = RewTerm(
-    #     func=mdp.time_loss_reward,
-    #     weight=-1.0,
-    #     params={"asset_cfg": SceneEntityCfg("mobility")},
-    # )
 
 @configclass
 class TerminationsCfg:
