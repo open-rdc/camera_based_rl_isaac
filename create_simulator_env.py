@@ -43,11 +43,11 @@ import mdp
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         # usd_path=os.environ['HOME'] + "/camera_based_rl_isaac/assets/robots/mobility/usd/param_fix_mobility.usd",
-        usd_path=os.environ['HOME'] + "/Documents/robot_model/param_fix_mobility.usd",
+        usd_path=os.environ['HOME'] + "/Documents/robot_model/param_fix_mobility_caster.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
-            max_linear_velocity=12.0,
-            max_angular_velocity=20000.0,
+            max_linear_velocity=1e5,
+            max_angular_velocity=1e10,
             max_depenetration_velocity=None,
             enable_gyroscopic_forces=True,
             disable_gravity=False,
@@ -55,7 +55,7 @@ MOBILITY_CONFIG = ArticulationCfg(
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
             enabled_self_collisions=False,
             solver_position_iteration_count=4,
-            solver_velocity_iteration_count=0,
+            solver_velocity_iteration_count=1,
             sleep_threshold=0.005,
             stabilization_threshold=0.001,
         ),
@@ -69,27 +69,36 @@ MOBILITY_CONFIG = ArticulationCfg(
     actuators={
         "left_wheel_actuator": DCMotorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit=940.4,
-            saturation_effort=940.4,
-            velocity_limit=3033.0, # [deg/s]
+            effort_limit=1640.4,
+            saturation_effort=1640.4,
+            velocity_limit=1e10, # [deg/s]
             stiffness=0.0,
             damping=100.0,
             friction=0.9,
         ),
         "right_wheel_actuator": DCMotorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit=940.4,
-            saturation_effort=940.4,
-            velocity_limit=3033.0,
+            effort_limit=1640.4,
+            saturation_effort=1640.4,
+            velocity_limit=1e10,
             stiffness=0.0,
             damping=100.0,
             friction=0.9,
         ),
+        "caster_roll_actuator": DCMotorCfg(
+            joint_names_expr=["caster_roll_joint"],
+            effort_limit=1640.4,
+            saturation_effort=1640.4,
+            velocity_limit=1e10,
+            stiffness=0.0,
+            damping=100.0,
+            friction=0.4,
+        ),
         "caster_yaw_actuator": IdealPDActuatorCfg(
             joint_names_expr=["caster_yaw_joint"],
-            effort_limit=1,
+            effort_limit=1.0,
             velocity_limit=None,
-            stiffness=20.0,
+            stiffness=10.0,
             damping=5.0,
             friction=0.2,
         ),
@@ -156,8 +165,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=1.0)
-    caster_position = mdp.JointPositionActionCfg(asset_name="mobility", joint_names=["caster_yaw_joint"], scale=1.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint", "caster_roll_joint"], scale=1.0)
 
 @configclass
 class ObservationsCfg:
@@ -329,12 +337,7 @@ def vel_controller(vel_msgs: torch.Tensor) -> torch.Tensor:
     left_w_rad = left_vel / wheel_radius # rad/s
     right_w_rad = right_vel / wheel_radius
 
-    left_w_deg = left_w_rad * 180 / 3.14 # deg/s
-    right_w_deg = right_w_rad * 180 / 3.14
-
-    caster_angle = torch.tensor([0.0]).to(vel_msgs.device)
-
-    actions = torch.stack([left_w_deg, right_w_deg, caster_angle], dim=1).to(vel_msgs.device)
+    actions = torch.stack([left_w_rad, right_w_rad, right_w_rad], dim=1).to(vel_msgs.device)
 
     return actions
 
@@ -355,7 +358,7 @@ def main():
         with torch.inference_mode():
 
             action = vel_controller(sample_vel)
-            print(f"action vel : {action}")
+            # print(f"action vel : {action}")
 
             # step the environment
             obs, rew, terminated, truncated, info = env.step(action)
@@ -363,9 +366,11 @@ def main():
             simulation_app.update()
 
             state = env.scene.get_state()
-            joint_velocity = state["articulation"]["mobility"]["joint_position"]
-
-            print(f"Joint velocity (actual): {joint_velocity}")
+            # joint_velocity = state["articulation"]["mobility"]["joint_velocity"]
+            joint_velocity = state["articulation"]["mobility"]["root_velocity"]
+            # print(f"joint velocity{joint_velocity}")
+            xy_vel = joint_velocity[:, :2]
+            print(f"root vel : {xy_vel.norm(dim=1)}")
 
     # close the environment and simulation
     env.close()
