@@ -23,8 +23,12 @@ def get_wp_idx(num_envs: int, device: torch.device) -> torch.Tensor:
         _wp_idx = torch.zeros(num_envs, dtype=torch.long, device=device)
     return _wp_idx
 
+def reset_wp_idx(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg):
+    global _wp_idx
+    """Reset waypoint indices for each parallel environment."""
+    _wp_idx = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
 
-def target_path_reward(env: ManagerBasedRLEnv, waypoints: list[tuple[float, float]], asset_cfg: SceneEntityCfg, radius: float = 2.0) -> torch.Tensor:
+def target_path_reward(env: ManagerBasedRLEnv, waypoints: list[tuple[float, float]], asset_cfg: SceneEntityCfg, radius: float = 5.0) -> torch.Tensor:
     device = env.device
     num_envs = env.num_envs
     wp_tensor = torch.tensor(waypoints, dtype=torch.float32, device=device)
@@ -40,6 +44,11 @@ def target_path_reward(env: ManagerBasedRLEnv, waypoints: list[tuple[float, floa
     robot_xy = root_pose[:, :2]
     lin_vel_xy = root_vel[:, :2]
 
+    origin_dists = robot_xy.norm(dim=1)
+    reset_mask = origin_dists < 5.0
+    if reset_mask.any():
+        reset_wp_idx(env, asset_cfg)
+
     to_goal_vec = wp_tensor[curr_wp_idx] - robot_xy
     to_goal_unit = to_goal_vec / (to_goal_vec.norm(dim=1, keepdim=True) + 1e-6)
     lin_vel_mag = lin_vel_xy.norm(dim=1)
@@ -50,7 +59,7 @@ def target_path_reward(env: ManagerBasedRLEnv, waypoints: list[tuple[float, floa
 
     dists = to_goal_vec.norm(dim=1)
     reached = dists < radius
-    reward += reached.float() * 100.0
+    reward += reached.float() * 300.0
     curr_wp_idx[reached] = (curr_wp_idx[reached] + 1) % num_wps
 
     return reward
