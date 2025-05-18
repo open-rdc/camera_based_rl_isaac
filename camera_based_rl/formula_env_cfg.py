@@ -43,7 +43,7 @@ import mdp
 # robot model config
 MOBILITY_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=os.environ['HOME'] + "/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/camera_based_rl/param_fix_mobility.usd",
+        usd_path=os.environ['HOME'] + "/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/manager_based/classic/camera_based_rl/mass_fix_mobility.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
             max_linear_velocity=1e5,
@@ -67,36 +67,27 @@ MOBILITY_CONFIG = ArticulationCfg(
         joint_pos={"caster_yaw_joint": 0.0}
     ),
     actuators={
-        "left_wheel_actuator": DCMotorCfg(
+        "left_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["left_wheel_joint"],
-            effort_limit=1640.4,
-            saturation_effort=1640.4,
-            velocity_limit=1e10, # [deg/s]
+            effort_limit=77.4,
+            # saturation_effort=1640.4,
+            velocity_limit=4749.82, # [deg/s]
             stiffness=0.0,
             damping=100.0,
             friction=0.9,
         ),
-        "right_wheel_actuator": DCMotorCfg(
+        "right_wheel_actuator": ImplicitActuatorCfg(
             joint_names_expr=["right_wheel_joint"],
-            effort_limit=1640.4,
-            saturation_effort=1640.4,
-            velocity_limit=1e10,
+            effort_limit=77.4,
+            # saturation_effort=1640.4,
+            velocity_limit=4749.82,
             stiffness=0.0,
             damping=100.0,
             friction=0.9,
-        ),
-        "caster_roll_actuator": DCMotorCfg(
-            joint_names_expr=["caster_roll_joint"],
-            effort_limit=1640.4,
-            saturation_effort=1640.4,
-            velocity_limit=1e10,
-            stiffness=0.0,
-            damping=100.0,
-            friction=0.4,
         ),
         "caster_yaw_actuator": IdealPDActuatorCfg(
             joint_names_expr=["caster_yaw_joint"],
-            effort_limit=1.0,
+            effort_limit=20.0,
             velocity_limit=None,
             stiffness=10.0,
             damping=5.0,
@@ -166,7 +157,7 @@ class CameraBasedRLSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=20000.0)
+    joint_velocity = mdp.JointVelocityActionCfg(asset_name="mobility", joint_names=["left_wheel_joint", "right_wheel_joint"], scale=30)
 
 @configclass
 class ObservationsCfg:
@@ -195,11 +186,6 @@ class EventCfg:
         },
     )
 
-    reset_waypoint_index = EventTerm(
-        func=mdp.reset_wp_idx,
-        mode="reset",
-    )
-
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
@@ -214,11 +200,13 @@ class RewardsCfg:
             "asset_cfg": SceneEntityCfg("mobility"),
             "waypoints": [
                 (1.875, -8.873),
+                (8.4139, -31.5888),
                 (38.043, -43.308),
                 (98.393, -0.736),
                 (64.330, 32.624),
                 (33.920, 30.395)
             ],
+            "radius": 5.0,
         },
     )
 
@@ -312,7 +300,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
         self.decimation = 2
         # simulation settings
         self.sim.dt = 0.005  # simulation timestep -> 200 Hz physics
-        self.episode_length_s = 1000
+        self.episode_length_s = 100
         # viewer settings
         self.viewer.eye = (8.0, 0.0, 5.0)
         # simulation settings
