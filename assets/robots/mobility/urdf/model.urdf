@@ -28,7 +28,7 @@
   <!-- ========== right Wheel ========== -->
   <link name="right_wheel">
     <inertial>
-      <mass value="7.0"/>
+      <mass value="12.0"/>
       <inertia ixx="0.04778" ixy="0" ixz="0"
                iyy="0.04778" iyz="0" izz="0.07875"/>
     </inertial>
@@ -49,7 +49,7 @@
   <!-- ========== left Wheel ========== -->
   <link name="left_wheel">
     <inertial>
-      <mass value="7.0"/>
+      <mass value="12.0"/>
       <inertia ixx="0.04778" ixy="0" ixz="0"
                iyy="0.04778" iyz="0" izz="0.07875"/>
     </inertial>
@@ -72,7 +72,7 @@
   <link name="caster_roll_link"/>
   <link name="caster">
     <inertial>
-      <mass value="10.0"/>
+      <mass value="16.0"/>
       <inertia ixx="0.04778" ixy="0" ixz="0"
                iyy="0.04778" iyz="0" izz="0.07875"/>
     </inertial>
