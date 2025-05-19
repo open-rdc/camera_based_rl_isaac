@@ -28,20 +28,20 @@
   <!-- ========== right Wheel ========== -->
   <link name="right_wheel">
     <inertial>
-      <mass value="7.0"/>
+      <mass value="12.0"/>
       <inertia ixx="0.04778" ixy="0" ixz="0"
                iyy="0.04778" iyz="0" izz="0.07875"/>
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.12 0.12"/>
       </geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+        <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.12 0.12"/>
       </geometry>
     </collision>
   </link>
@@ -49,20 +49,20 @@
   <!-- ========== left Wheel ========== -->
   <link name="left_wheel">
     <inertial>
-      <mass value="7.0"/>
+      <mass value="12.0"/>
       <inertia ixx="0.04778" ixy="0" ixz="0"
                iyy="0.04778" iyz="0" izz="0.07875"/>
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.12 0.12"/>
       </geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 1.57"/>
       <geometry>
-      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.05 0.12 0.12"/>
+      <mesh filename="package://camera_based_rl_isaac/src/robots/mobility/urdf/meshes/tire.dae" scale="0.1 0.12 0.12"/>
       </geometry>
     </collision>
   </link>
@@ -72,7 +72,7 @@
   <link name="caster_roll_link"/>
   <link name="caster">
     <inertial>
-      <mass value="10.0"/>
+      <mass value="16.0"/>
       <inertia ixx="0.04778" ixy="0" ixz="0"
                iyy="0.04778" iyz="0" izz="0.07875"/>
     </inertial>
