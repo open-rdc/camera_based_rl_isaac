@@ -199,13 +199,14 @@ class RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("mobility"),
             "waypoints": [
+                (1.875, -8.873),
                 (8.4139, -31.5888),
                 (38.043, -43.308),
                 (98.393, -0.736),
                 (64.330, 32.624),
                 (33.920, 30.395)
             ],
-            "radius": 5.0,
+            "radius": 3.0,
         },
     )
 
