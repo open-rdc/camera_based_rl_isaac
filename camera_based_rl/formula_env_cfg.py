@@ -87,7 +87,7 @@ MOBILITY_CONFIG = ArticulationCfg(
         ),
         "caster_yaw_actuator": IdealPDActuatorCfg(
             joint_names_expr=["caster_yaw_joint"],
-            effort_limit=20.0,
+            effort_limit=3.0,
             velocity_limit=None,
             stiffness=10.0,
             damping=5.0,
@@ -191,7 +191,7 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # (1) Failure penalty
-    terminating = RewTerm(func=mdp.is_terminated, weight=-20.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
     # (2) path following robot reward
     running_reward = RewTerm(
         func=mdp.target_path_reward,
@@ -199,7 +199,6 @@ class RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("mobility"),
             "waypoints": [
-                (1.875, -8.873),
                 (8.4139, -31.5888),
                 (38.043, -43.308),
                 (98.393, -0.736),
@@ -209,6 +208,23 @@ class RewardsCfg:
             "radius": 5.0,
         },
     )
+
+    slip_penalty = RewTerm(
+        func=mdp.slip_penalty,
+        weight=10.0,
+        params={
+            "asset_cfg": SceneEntityCfg("mobility"),
+        },
+    )
+
+    go_ahead_reward = RewTerm(
+        func=mdp.go_ahead,
+        weight=0.001,
+        params={
+            "asset_cfg": SceneEntityCfg("mobility"),
+        },
+    )
+
 
 @configclass
 class TerminationsCfg:
@@ -281,7 +297,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
     """Configuration for the wheeled quadruped environment."""
 
     # Scene settings
-    scene: CameraBasedRLSceneCfg = CameraBasedRLSceneCfg(num_envs=1, env_spacing=1.5)
+    scene: CameraBasedRLSceneCfg = CameraBasedRLSceneCfg(num_envs=1, env_spacing=0.5)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -302,6 +318,7 @@ class CameraBasedRLCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 0.005  # simulation timestep -> 200 Hz physics
         self.episode_length_s = 100
         # viewer settings
-        self.viewer.eye = (8.0, 0.0, 5.0)
+        self.viewer.eye = (51.8296, -35.2759, 167.8148)
+        self.viewer.lookat = (0.0, 0.0, 0.0)
         # simulation settings
         self.sim.render_interval = self.decimation
