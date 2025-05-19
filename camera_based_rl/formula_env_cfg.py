@@ -191,11 +191,11 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # (1) Failure penalty
-    terminating = RewTerm(func=mdp.is_terminated, weight=-2.0)
+    terminating = RewTerm(func=mdp.is_terminated, weight=-200.0)
     # (2) path following robot reward
     running_reward = RewTerm(
         func=mdp.target_path_reward,
-        weight=1.0,
+        weight=5.0,
         params={
             "asset_cfg": SceneEntityCfg("mobility"),
             "waypoints": [
@@ -211,7 +211,7 @@ class RewardsCfg:
 
     slip_penalty = RewTerm(
         func=mdp.slip_penalty,
-        weight=10.0,
+        weight=3.0,
         params={
             "asset_cfg": SceneEntityCfg("mobility"),
         },
@@ -219,7 +219,7 @@ class RewardsCfg:
 
     go_ahead_reward = RewTerm(
         func=mdp.go_ahead,
-        weight=0.001,
+        weight=0.05,
         params={
             "asset_cfg": SceneEntityCfg("mobility"),
         },

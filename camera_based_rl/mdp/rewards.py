@@ -83,6 +83,9 @@ def slip_penalty(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Ten
     lin_vel_xy = root_vel[:, 0:2]  # [vx, vy]
     ang_vel_z = root_vel[:, 5]     # wz
 
+    lin_vel = lin_vel_xy.norm(dim=1)
+    valid_mask = lin_vel >= 1.0
+
     # ロボット向き（yaw）をクォータニオンから取得
     roll, pitch, yaw  = euler_xyz_from_quat(root_pose[:, 3:7])  # [N]
 
@@ -105,8 +108,9 @@ def slip_penalty(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Ten
     actual_vec = F.normalize(torch.cat([lin_vel_xy, ang_vel_z], dim=1), dim=1)
 
     cos_sim = torch.sum(actual_vec * ideal_vec, dim=1)
-
     penalty = -1.0 * (1.0 - cos_sim)
+
+    penalty = torch.where(valid_mask, penalty, torch.zeros_like(penalty))
 
     return penalty
 
